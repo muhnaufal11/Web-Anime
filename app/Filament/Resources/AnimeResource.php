@@ -95,9 +95,10 @@ class AnimeResource extends Resource
                     ->weight('bold'),
                 Tables\Columns\TextColumn::make('genres.name')
                     ->label('Genres')
-                    ->badge()
-                    ->color('primary')
-                    ->limit(3),
+                    ->formatStateUsing(fn ($state) => $state)
+                    ->listWithLineBreaks()
+                    ->limitList(3)
+                    ->color('primary'),
                 Tables\Columns\BadgeColumn::make('type')
                     ->colors([
                         'success' => 'TV',
