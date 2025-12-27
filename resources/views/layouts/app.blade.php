@@ -34,10 +34,9 @@
                 </div>
 
                 <div class="flex items-center gap-1 sm:gap-3 md:gap-6">
-                    
                     <form action="{{ route('search') }}" method="GET" class="hidden md:block relative group">
                         <input type="text" name="search" placeholder="Cari anime..." 
-                               class="w-40 lg:w-64 xl:w-80 bg-[#1a1d24] border border-white/10 text-white rounded-full px-4 py-2 text-xs focus:border-red-600 focus:ring-4 focus:ring-red-600/10 transition-all placeholder-gray-600">
+                               class="w-40 lg:w-64 xl:w-80 bg-[#1a1d24] border border-white/10 text-white rounded-full px-4 py-2 text-xs focus:border-red-600 focus:ring-4 focus:ring-red-600/10 transition-all">
                         <button type="submit" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                         </button>
@@ -71,7 +70,7 @@
                             </div>
                         @else
                             <a href="{{ route('auth.login') }}" class="text-[10px] md:text-xs font-bold uppercase p-2 hover:text-red-500 transition">Masuk</a>
-                            <a href="{{ route('auth.register') }}" class="text-[10px] md:text-xs font-bold uppercase px-3 py-2 md:px-4 md:py-2.5 bg-red-600 text-white rounded-lg shadow-lg shadow-red-600/20 hover:bg-red-700 transition-all">Daftar</a>
+                            <a href="{{ route('auth.register') }}" class="text-[10px] md:text-xs font-bold uppercase px-3 py-2 md:px-4 md:py-2.5 bg-red-600 text-white rounded-lg transition-all">Daftar</a>
                         @endauth
                     </div>
 
@@ -79,7 +78,7 @@
                     <div class="hidden sm:flex items-center border-l border-white/10 pl-4 ml-1">
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="holidayToggle" class="sr-only peer" onchange="toggleHolidayEffect()">
-                            <div class="w-8 h-4 bg-gray-700 rounded-full peer peer-checked:bg-red-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:after:translate-x-4"></div>
+                            <div class="w-8 h-4 bg-gray-700 rounded-full peer-checked:bg-red-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:after:translate-x-4"></div>
                         </label>
                     </div>
                     @endif
@@ -95,28 +94,28 @@
 
         <div id="mobileSearchBar" class="hidden md:hidden px-4 pb-4 bg-[#0f1115]">
             <form action="{{ route('search') }}" method="GET">
-                <input type="text" name="search" placeholder="Cari anime..." class="w-full bg-[#1a1d24] border border-white/10 text-white rounded-xl px-4 py-3 text-sm focus:border-red-600 focus:ring-0">
+                <input type="text" name="search" placeholder="Cari anime..." class="w-full bg-[#1a1d24] border border-white/10 text-white rounded-xl px-4 py-3 text-sm focus:border-red-600">
             </form>
         </div>
 
-        <div id="mobileMenu" class="lg:hidden bg-[#0f1115]/98 border-t border-white/5 transition-all duration-500 ease-in-out max-h-0 opacity-0 overflow-hidden pointer-events-none">
+        <div id="mobileMenu" class="lg:hidden bg-[#0f1115] border-t border-white/5 transition-all duration-500 ease-in-out max-h-0 opacity-0 overflow-hidden pointer-events-none transform -translate-y-4">
             <div class="p-4 space-y-1">
-                <a href="{{ route('home') }}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold {{ request()->routeIs('home') ? 'bg-red-600 text-white' : 'text-gray-400 hover:bg-white/5' }}">🏠 HOME</a>
-                <a href="{{ route('search') }}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold {{ request()->routeIs('search') ? 'bg-red-600 text-white' : 'text-gray-400 hover:bg-white/5' }}">📺 DAFTAR ANIME</a>
-                <a href="{{ route('schedule') }}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold {{ request()->routeIs('schedule') ? 'bg-red-600 text-white' : 'text-gray-400 hover:bg-white/5' }}">📅 JADWAL TAYANG</a>
-                <a href="{{ route('search', ['type' => 'Movie']) }}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-gray-400 hover:bg-white/5">🎬 MOVIE</a>
+                <a href="{{ route('home') }}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold {{ request()->routeIs('home') ? 'bg-red-600 text-white' : 'text-gray-400' }}">🏠 HOME</a>
+                <a href="{{ route('search') }}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold {{ request()->routeIs('search') ? 'bg-red-600 text-white' : 'text-gray-400' }}">📺 ANIME</a>
+                <a href="{{ route('schedule') }}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold {{ request()->routeIs('schedule') ? 'bg-red-600 text-white' : 'text-gray-400' }}">📅 JADWAL</a>
+                <a href="{{ route('search', ['type' => 'Movie']) }}" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-gray-400">🎬 MOVIE</a>
                 
+                @if(isset($holidaySettings) && (($holidaySettings['christmas'] ?? false) || ($holidaySettings['new_year'] ?? false)))
                 <div class="pt-4 border-t border-white/5 mt-4">
-                    @if(isset($holidaySettings) && (($holidaySettings['christmas'] ?? false) || ($holidaySettings['new_year'] ?? false)))
                     <div class="flex items-center justify-between px-4 py-4 bg-white/5 rounded-xl">
-                        <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400">✨ Efek Visual</span>
+                        <span class="text-[10px] font-bold uppercase text-gray-400">✨ Efek Visual</span>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="holidayToggleMobile" class="sr-only peer" onchange="toggleHolidayEffect()">
-                            <div class="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-red-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+                            <div class="w-11 h-6 bg-gray-700 rounded-full peer-checked:bg-red-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
                         </label>
                     </div>
-                    @endif
                 </div>
+                @endif
             </div>
         </div>
     </nav>
@@ -125,52 +124,17 @@
         @yield('content')
     </main>
 
-    <footer class="bg-gradient-to-t from-black via-[#0a0c10] to-[#0f1115] border-t border-white/5 py-12 md:py-20 mt-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 md:gap-12 mb-12">
-                
-                <div class="space-y-4">
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
-                            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/></svg>
-                        </div>
-                        <span class="text-xl font-black text-white font-['Montserrat'] uppercase"><span class="text-red-600">nip</span>nime</span>
-                    </div>
-                    <p class="text-gray-500 text-sm leading-relaxed">Nikmati pengalaman menonton anime subtitle Indonesia terbaik dengan kualitas video HD.</p>
+    <footer class="bg-gradient-to-t from-black via-[#0a0c10] to-[#0f1115] border-t border-white/5 py-12 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div class="flex flex-col items-center gap-4 mb-8">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center text-white font-bold">N</div>
+                    <span class="text-xl font-black text-white font-['Montserrat'] uppercase"><span class="text-red-600">nip</span>nime</span>
                 </div>
-
-                <div>
-                    <h4 class="text-white font-bold uppercase tracking-wider mb-5 text-xs">Navigasi</h4>
-                    <ul class="space-y-3 text-sm text-gray-500">
-                        <li><a href="{{ route('home') }}" class="hover:text-red-500 transition">Beranda</a></li>
-                        <li><a href="{{ route('search') }}" class="hover:text-red-500 transition">Daftar Anime</a></li>
-                        <li><a href="{{ route('schedule') }}" class="hover:text-red-500 transition">Jadwal Rilis</a></li>
-                    </ul>
-                </div>
-
-                <div>
-                    <h4 class="text-white font-bold uppercase tracking-wider mb-5 text-xs">Bantuan & Legal</h4>
-                    <ul class="space-y-3 text-sm text-gray-500">
-                        <li><a href="#" class="hover:text-red-500 transition">DMCA</a></li>
-                        <li><a href="#" class="hover:text-red-500 transition">Kebijakan Privasi</a></li>
-                    </ul>
-                </div>
-
-                <div>
-                    <h4 class="text-white font-bold uppercase tracking-wider mb-5 text-xs">Komunitas</h4>
-                    <div class="flex gap-3">
-                        <a href="#" class="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center hover:bg-red-600 transition-all text-gray-400 hover:text-white">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-                        </a>
-                        <a href="#" class="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center hover:bg-red-600 transition-all text-gray-400 hover:text-white">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
-                        </a>
-                    </div>
-                </div>
+                <p class="text-gray-500 text-xs sm:text-sm max-w-md">Platform streaming anime subtitle Indonesia terlengkap dan terupdate setiap hari.</p>
             </div>
-
-            <div class="border-t border-white/5 pt-8 text-center">
-                <p class="text-gray-600 text-[10px] uppercase tracking-widest">© 2024-2025 nipnime — Built for anime fans</p>
+            <div class="border-t border-white/5 pt-8">
+                <p class="text-gray-600 text-[10px] uppercase tracking-widest">© 2025 nipnime — Made for the community</p>
             </div>
         </div>
     </footer>
@@ -188,37 +152,41 @@
             const mobileSearchBtn = document.getElementById('mobileSearchBtn');
             const mobileSearchBar = document.getElementById('mobileSearchBar');
 
-            if (profileBtn && profileMenu) {
+            // Toggle Profile
+            if (profileBtn) {
                 profileBtn.onclick = (e) => {
                     e.stopPropagation();
                     profileMenu.classList.toggle('opacity-0');
                     profileMenu.classList.toggle('invisible');
-                    profileMenu.classList.toggle('translate-y-2');
                 };
-                window.onclick = () => profileMenu.classList.add('opacity-0', 'invisible', 'translate-y-2');
+                window.onclick = () => profileMenu.classList.add('opacity-0', 'invisible');
             }
 
-            if (mobileMenuBtn && mobileMenu) {
+            // Toggle Menu Mobile (Slide Down Mulus)
+            if (mobileMenuBtn) {
                 mobileMenuBtn.onclick = () => {
                     const isClosed = mobileMenu.classList.contains('max-h-0');
                     if (isClosed) {
-                        mobileMenu.classList.remove('max-h-0', 'opacity-0', 'pointer-events-none');
-                        mobileMenu.classList.add('max-h-[500px]', 'opacity-100', 'pointer-events-auto');
+                        mobileMenu.classList.remove('max-h-0', 'opacity-0', 'pointer-events-none', '-translate-y-4');
+                        mobileMenu.classList.add('max-h-[500px]', 'opacity-100', 'pointer-events-auto', 'translate-y-0');
                         burgerIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>';
                     } else {
-                        mobileMenu.classList.add('max-h-0', 'opacity-0', 'pointer-events-none');
-                        mobileMenu.classList.remove('max-h-[500px]', 'opacity-100', 'pointer-events-auto');
+                        mobileMenu.classList.add('max-h-0', 'opacity-0', 'pointer-events-none', '-translate-y-4');
+                        mobileMenu.classList.remove('max-h-[500px]', 'opacity-100', 'pointer-events-auto', 'translate-y-0');
                         burgerIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"/>';
                     }
+                    if (mobileSearchBar) mobileSearchBar.classList.add('hidden');
                 };
             }
 
-            if (mobileSearchBtn && mobileSearchBar) {
+            // Toggle Search Mobile
+            if (mobileSearchBtn) {
                 mobileSearchBtn.onclick = () => {
                     mobileSearchBar.classList.toggle('hidden');
                     if (!mobileSearchBar.classList.contains('hidden')) {
                         mobileSearchBar.querySelector('input').focus();
-                        mobileMenu.classList.add('max-h-0', 'opacity-0', 'pointer-events-none');
+                        // Tutup menu jika search dibuka
+                        mobileMenu.classList.add('max-h-0', 'opacity-0', 'pointer-events-none', '-translate-y-4');
                     }
                 };
             }
@@ -248,12 +216,13 @@
     @endif
 
     <style>
-        /* Animasi Konten */
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         main { animation: fadeInUp 0.4s ease-out forwards; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #0f1115; }
         ::-webkit-scrollbar-thumb { background: #dc2626; border-radius: 10px; }
+        /* Transisi Mobile Menu */
+        #mobileMenu { transition: max-height 0.5s ease, opacity 0.5s ease, transform 0.5s ease; }
     </style>
 </body>
 </html>
