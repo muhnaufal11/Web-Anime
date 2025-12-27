@@ -341,19 +341,17 @@
         }
     </style>
 {{-- TOMBOL KONTROL EFEK --}}
-@if(isset($holidaySettings) && ($holidaySettings['christmas'] || $holidaySettings['new_year']))
-    <div class="fixed bottom-10 left-5 z-[99999]">
+@if(isset($holidaySettings) && (($holidaySettings['christmas'] ?? false) || ($holidaySettings['new_year'] ?? false)))
+    <div class="fixed bottom-10 left-5 z-[999999]"> {{-- Z-index sangat tinggi --}}
         <button onclick="toggleHolidayEffect()" 
-                class="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-2xl shadow-red-600/40 transition-all transform hover:scale-105 border-2 border-white/20">
+                class="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-2xl transition-all transform hover:scale-105 border-2 border-white/20">
             <span class="animate-pulse">✨</span>
             <span class="text-[11px] font-black uppercase tracking-widest">EFEK</span>
         </button>
     </div>
 
-    {{-- Container Efek --}}
-    <div id="holiday-container" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9998;"></div>
+    <div id="holiday-container" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 99998;"></div>
 
-    {{-- Import Library --}}
     @if($holidaySettings['christmas'])
         <script src="https://unpkg.com/magic-snowflakes/dist/snowflakes.min.js"></script>
     @endif
@@ -363,9 +361,11 @@
 
     <script>
         let holidayInstance = null;
-        const container = document.getElementById('holiday-container');
-
+        
         function startEffect() {
+            const container = document.getElementById('holiday-container');
+            if(!container) return;
+
             const isDisabled = localStorage.getItem('nipnime_effects_disabled') === 'true';
             if (isDisabled) return;
 
@@ -379,21 +379,8 @@
 
         function toggleHolidayEffect() {
             const isDisabled = localStorage.getItem('nipnime_effects_disabled') === 'true';
-            
-            if (isDisabled) {
-                localStorage.setItem('nipnime_effects_disabled', 'false');
-                location.reload(); 
-            } else {
-                localStorage.setItem('nipnime_effects_disabled', 'true');
-                if (holidayInstance) {
-                    @if($holidaySettings['christmas'])
-                        holidayInstance.destroy();
-                    @else
-                        holidayInstance.stop();
-                    @endif
-                }
-                container.innerHTML = '';
-            }
+            localStorage.setItem('nipnime_effects_disabled', isDisabled ? 'false' : 'true');
+            location.reload(); 
         }
 
         document.addEventListener('DOMContentLoaded', startEffect);
