@@ -16,7 +16,7 @@ class ListEmptyAnimes extends Page
 
     public function mount()
     {
-        // Query untuk mencari anime yang belum punya episode atau video server
+        // Query untuk mencari anime yang butuh perhatian (tanpa episode atau video server)
         $this->animes = Anime::whereDoesntHave('episodes')
             ->orWhereHas('episodes', function($q) {
                 $q->doesntHave('videoServers');
