@@ -23,16 +23,8 @@ class ImportFromHtml extends Page implements Forms\Contracts\HasForms
             Notification::make()
                 ->title('Tidak ada episode')
                 ->body('Parse HTML terlebih dahulu')
-                ->danger()
-
-                <?php
-
-                namespace App\Filament\Resources\HtmlImportResource\Pages;
-
-                use Filament\Resources\Pages\Page;
-                use Filament\Notifications\Notification;
-                use Livewire\WithFileUploads;
-                use Illuminate\Support\Facades\Http;
+                ->danger();
+            // ...existing code...
 
                 class ImportFromHtml extends Page
                 {
