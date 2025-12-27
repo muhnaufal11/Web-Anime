@@ -17,7 +17,7 @@
                         <x-filament::button 
                             size="sm" 
                             color="secondary" 
-                            icon="heroicon-s-clipboard"
+                            icon="heroicon-s-clipboard-copy"
                             onclick="navigator.clipboard.writeText('{{ $anime->title }}'); alert('Judul disalin: {{ $anime->title }}')"
                         >
                             Copy Judul
@@ -27,7 +27,7 @@
                             size="sm" 
                             tag="a" 
                             href="{{ \App\Filament\Resources\AnimeResource::getUrl('edit', ['record' => $anime]) }}"
-                            icon="heroicon-s-pencil-square"
+                            icon="heroicon-s-pencil"
                         >
                             Edit
                         </x-filament::button>

@@ -13,7 +13,6 @@ class ListAnimes extends ListRecords
     protected function getActions(): array
     {
         return [
-            // Tombol tambahan untuk cek anime yang masih kosong
             Actions\Action::make('cek_kosong')
                 ->label('Cek Anime Kosong')
                 ->color('warning')
