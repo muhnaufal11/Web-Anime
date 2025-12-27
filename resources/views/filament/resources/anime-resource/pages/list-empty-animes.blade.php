@@ -8,12 +8,19 @@
                     </span>
                     <div>
                         <h3 class="text-sm font-bold text-gray-900 dark:text-white">{{ $anime->title }}</h3>
-                        <p class="text-xs text-gray-500 italic">Belum ada episode/video server</p>
+                        
+                        {{-- KETERANGAN SESUAI KONDISI --}}
+                        <p class="text-xs italic">
+                            @if($anime->episodes_count == 0)
+                                <span class="text-danger-600 font-medium text-red-500">Belum ada episode sama sekali</span>
+                            @else
+                                <span class="text-warning-600 font-medium text-orange-500">{{ $anime->missing_video_count }} episode belum punya link video</span>
+                            @endif
+                        </p>
                     </div>
                 </div>
 
                 <div class="flex gap-2">
-                    {{-- Tombol Copy dengan fungsi Custom --}}
                     <x-filament::button
                         size="sm"
                         color="secondary"
@@ -35,21 +42,19 @@
             </div>
         @empty
             <div class="p-10 text-center bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 dark:bg-gray-900">
-                <p class="text-gray-500">✅ Semua anime sudah memiliki episode dan video server.</p>
+                <p class="text-gray-500">✅ Semua anime sudah lengkap.</p>
             </div>
         @endforelse
     </div>
 
-    {{-- Script Tambahan agar Copy Jalan di HTTP (Jaringan Lokal) --}}
+    {{-- Script Copy Fallback tetap dipertahankan karena kamu pakai IP HTTP --}}
     <script>
         function copyToClipboard(text) {
             if (navigator.clipboard && window.isSecureContext) {
-                // Gunakan cara modern jika HTTPS atau localhost
                 navigator.clipboard.writeText(text).then(() => {
                     alert('Judul disalin: ' + text);
                 });
             } else {
-                // Gunakan cara lama (Fallback) untuk HTTP/IP lokal
                 let textArea = document.createElement("textarea");
                 textArea.value = text;
                 textArea.style.position = "fixed";
@@ -58,14 +63,12 @@
                 document.body.appendChild(textArea);
                 textArea.focus();
                 textArea.select();
-                
                 try {
                     document.execCommand('copy');
-                    alert('Judul disalin (fallback): ' + text);
+                    alert('Judul disalin: ' + text);
                 } catch (err) {
-                    console.error('Gagal menyalin teks', err);
+                    console.error('Gagal menyalin', err);
                 }
-                
                 document.body.removeChild(textArea);
             }
         }
