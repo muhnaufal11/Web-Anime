@@ -22,6 +22,21 @@ services:
     networks:
       - nipnime-network
 
+  queue:
+    image: webdevops/php-nginx:8.2-alpine
+    container_name: nipnime-queue
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - ./storage:/app/storage
+    command: php artisan queue:work --queue=default --tries=3 --sleep=3 --timeout=90
+    depends_on:
+      - mysql
+      - app
+    networks:
+      - nipnime-network
+
   mysql:
     image: mysql:8.0
     container_name: nipnime-mysql
