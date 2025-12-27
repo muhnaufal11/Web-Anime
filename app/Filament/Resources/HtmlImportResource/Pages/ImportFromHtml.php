@@ -130,25 +130,7 @@ class ImportFromHtml extends Page implements Forms\Contracts\HasForms
             }
         }
 
-                            // Buat ZIP file di storage temporary
-                            $zipPath = storage_path('app/public/episodes_html_' . time() . '.zip');
-                            $zip = new \ZipArchive();
-                            if ($zip->open($zipPath, \ZipArchive::CREATE) === TRUE) {
-                                foreach ($episodeHtmls as $i => $ep) {
-                                    $filename = 'episode-' . ($i + 1) . '.html';
-                                    $zip->addFromString($filename, $ep['html'] ?? '');
-                                }
-                                $zip->close();
-                            } else {
-                                Notification::make()
-                                    ->title('Gagal membuat ZIP')
-                                    ->danger()
-                                    ->send();
-                                return;
-                            }
-
-                            // Download ZIP ke browser
-                            return response()->download($zipPath)->deleteFileAfterSend(true);
+                            // ...existing code...
                         }
                     }
             $file = is_array($this->htmlFile) ? $this->htmlFile[0] : $this->htmlFile;
