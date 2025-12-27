@@ -347,19 +347,38 @@
         <script>new Snowflakes({ color: '#ffffff' });</script>
     @endif
 
-    {{-- EFEK KEMBANG API TAHUN BARU --}}
-    @if($holidaySettings['new_year'])
-        <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
-        <script>
-            var duration = 5 * 1000;
-            var animationEnd = Date.now() + duration;
-            var interval = setInterval(function() {
-                var timeLeft = animationEnd - Date.now();
-                if (timeLeft <= 0) return clearInterval(interval);
-                confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
-            }, 250);
-        </script>
-    @endif
+    @if(isset($holidaySettings) && $holidaySettings['new_year'])
+    <div id="fireworks-container" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999;"></div>
+
+    <script src="https://unpkg.com/fireworks-js@2.x/dist/index.umd.js"></script>
+    <script>
+        const container = document.getElementById('fireworks-container');
+        const fireworks = new Fireworks.default(container, {
+            autoresize: true,
+            opacity: 0.5,
+            acceleration: 1.05,
+            friction: 0.97,
+            gravity: 1.5,
+            particles: 50,
+            traceLength: 3,
+            traceSpeed: 10,
+            explosion: 5,
+            intensity: 30, // Semakin tinggi, semakin banyak kembang api muncul di mana-mana
+            flicker: 50,
+            lineStyle: 'round',
+            hue: { min: 0, max: 360 },
+            delay: { min: 30, max: 60 },
+            rocketsPoint: { min: 50, max: 50 },
+            lineWidth: { explosion: { min: 1, max: 3 }, trace: { min: 1, max: 2 } },
+            brightness: { min: 50, max: 80 },
+            decay: { min: 0.015, max: 0.03 },
+            mouse: { click: false, move: false, max: 1 }
+        });
+
+        // Jalankan Kembang Api
+        fireworks.start();
+    </script>
+@endif
 @endif
 </body>
 </html>
