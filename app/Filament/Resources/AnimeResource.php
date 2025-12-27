@@ -257,6 +257,7 @@ class AnimeResource extends Resource
             'index' => Pages\ListAnimes::route('/'),
             'create' => Pages\CreateAnime::route('/create'),
             'edit' => Pages\EditAnime::route('/{record}/edit'),
+            'list-empty-animes' => Pages\ListEmptyAnimes::route('/empty'),
         ];
     }    
 }
