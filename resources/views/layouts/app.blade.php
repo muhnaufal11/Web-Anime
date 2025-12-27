@@ -340,21 +340,19 @@
             background: #b91c1c;
         }
     </style>
-  {{-- BLOK KONTROL EFEK HOLIDAY (NATAL & TAHUN BARU) --}}
+{{-- Tombol Toggle Efek (Muncul jika salah satu tema aktif) --}}
 @if(isset($holidaySettings) && ($holidaySettings['christmas'] || $holidaySettings['new_year']))
-    
-    {{-- 1. Tombol Toggle untuk User --}}
     <div class="fixed bottom-5 left-5 z-[10000]">
-        <button id="toggle-holiday-effect" onclick="toggleHolidayEffect()" class="flex items-center gap-2 px-4 py-2 bg-black/50 backdrop-blur-md border border-white/20 text-white text-[10px] sm:text-xs font-black rounded-full hover:bg-red-600 transition-all shadow-lg uppercase tracking-wider">
+        <button id="toggle-holiday-effect" onclick="toggleHolidayEffect()" class="flex items-center gap-2 px-4 py-2 bg-black/50 backdrop-blur-md border border-white/20 text-white text-xs font-bold rounded-full hover:bg-red-600 transition-all shadow-lg">
             <span id="toggle-icon">✨</span>
             <span id="toggle-text">Matikan Efek</span>
         </button>
     </div>
+@endif
 
-    {{-- 2. Container Efek --}}
-    <div id="holiday-container" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999;"></div>
-
-    {{-- 3. Import Library yang Dibutuhkan --}}
+{{-- Script Logika Efek & Kontrol User --}}
+@if(isset($holidaySettings))
+    {{-- Import Library --}}
     @if($holidaySettings['christmas'])
         <script src="https://unpkg.com/magic-snowflakes/dist/snowflakes.min.js"></script>
     @endif
@@ -362,12 +360,15 @@
         <script src="https://unpkg.com/fireworks-js@2.x/dist/index.umd.js"></script>
     @endif
 
-    {{-- 4. Logika JavaScript --}}
+    <div id="holiday-container" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999;"></div>
+
     <script>
         let holidayInstance = null;
         const container = document.getElementById('holiday-container');
+        const toggleBtn = document.getElementById('toggle-holiday-effect');
         const toggleText = document.getElementById('toggle-text');
 
+        // 1. Fungsi untuk Menjalankan Efek
         function startEffect() {
             const isDisabled = localStorage.getItem('nipnime_effects_disabled') === 'true';
             
@@ -386,13 +387,16 @@
             if(toggleText) toggleText.innerText = "Matikan Efek";
         }
 
+        // 2. Fungsi Toggle untuk User
         function toggleHolidayEffect() {
             const isDisabled = localStorage.getItem('nipnime_effects_disabled') === 'true';
             
             if (isDisabled) {
+                // Aktifkan
                 localStorage.setItem('nipnime_effects_disabled', 'false');
-                location.reload(); 
+                location.reload(); // Reload untuk menjalankan instance baru
             } else {
+                // Matikan
                 localStorage.setItem('nipnime_effects_disabled', 'true');
                 if (holidayInstance) {
                     @if($holidaySettings['christmas'])
@@ -406,9 +410,9 @@
             }
         }
 
+        // Jalankan saat halaman load
         document.addEventListener('DOMContentLoaded', startEffect);
     </script>
 @endif
-{{-- Akhir Blok Holiday --}}
 </body>
 </html>
