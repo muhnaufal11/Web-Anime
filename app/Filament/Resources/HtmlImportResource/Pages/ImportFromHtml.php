@@ -79,11 +79,10 @@ class ImportFromHtml extends Page implements Forms\Contracts\HasForms
         }
 
         try {
-            $path = storage_path('app/public/' . $this->htmlFile);
-            if (file_exists($path)) {
-                $content = file_get_contents($path);
-                $this->parseAndPreview($content);
-            }
+            // Mendukung single/multiple file upload (ambil file pertama jika array)
+            $file = is_array($this->htmlFile) ? $this->htmlFile[0] : $this->htmlFile;
+            $content = $file->get();
+            $this->parseAndPreview($content);
         } catch (\Exception $e) {
             Notification::make()
                 ->title('Error membaca file')
