@@ -13,18 +13,16 @@
                 </div>
 
                 <div class="flex gap-2">
-                    {{-- Tombol Copy Judul --}}
+                    {{-- Tombol Copy dengan fungsi Custom --}}
                     <x-filament::button
                         size="sm"
                         color="secondary"
                         icon="heroicon-s-clipboard-copy"
-                        {{-- Menggunakan addslashes agar judul seperti Dr. Stone tidak error --}}
-                        onclick="window.navigator.clipboard.writeText('{{ addslashes($anime->title) }}'); alert('Judul disalin: {{ addslashes($anime->title) }}')"
+                        onclick="copyToClipboard('{{ addslashes($anime->title) }}')"
                     >
                         Copy Judul
                     </x-filament::button>
 
-                    {{-- Tombol Edit --}}
                     <x-filament::button
                         size="sm"
                         tag="a"
@@ -41,4 +39,35 @@
             </div>
         @endforelse
     </div>
+
+    {{-- Script Tambahan agar Copy Jalan di HTTP (Jaringan Lokal) --}}
+    <script>
+        function copyToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                // Gunakan cara modern jika HTTPS atau localhost
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('Judul disalin: ' + text);
+                });
+            } else {
+                // Gunakan cara lama (Fallback) untuk HTTP/IP lokal
+                let textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-999999px";
+                textArea.style.top = "-999999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                
+                try {
+                    document.execCommand('copy');
+                    alert('Judul disalin (fallback): ' + text);
+                } catch (err) {
+                    console.error('Gagal menyalin teks', err);
+                }
+                
+                document.body.removeChild(textArea);
+            }
+        }
+    </script>
 </x-filament::page>
