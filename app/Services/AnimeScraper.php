@@ -6,6 +6,39 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 class AnimeScraper
+
+    /**
+     * Download all episode HTMLs and return as array
+     */
+    public function downloadEpisodeHtmls(array $episodes, $delay = 0): array
+    {
+        $results = [];
+        foreach ($episodes as $ep) {
+            $url = is_array($ep) ? ($ep['url'] ?? $ep[0] ?? null) : $ep;
+            if (!$url) continue;
+            try {
+                $html = Http::timeout(30)
+                    ->withHeaders([
+                        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                        'Accept' => 'text/html,application/xhtml+xml',
+                    ])->get($url)->body();
+                $results[] = [
+                    'url' => $url,
+                    'html' => $html,
+                ];
+            } catch (\Exception $e) {
+                $results[] = [
+                    'url' => $url,
+                    'html' => '',
+                    'error' => $e->getMessage(),
+                ];
+            }
+            if ($delay > 0) {
+                sleep($delay);
+            }
+        }
+        return $results;
+    }
 {
     /**
      * Parse anime detail from HTML content

@@ -15,6 +15,46 @@ use Illuminate\Support\Str;
 use Livewire\WithFileUploads;
 
 class ImportFromHtml extends Page implements Forms\Contracts\HasForms
+
+    // Download all episode HTMLs as ZIP and return response
+    public function downloadAllEpisodeHtmls()
+    {
+        if (!$this->parsedData || empty($this->parsedData['episodes'])) {
+            Notification::make()
+                ->title('Tidak ada episode')
+                ->body('Parse HTML terlebih dahulu')
+                ->danger()
+                ->send();
+            return;
+        }
+
+        $scraper = new \App\Services\AnimeScraper();
+        $delay = (int)($this->delayBetweenRequests ?? 0);
+        $episodes = $scraper->downloadEpisodeHtmls($this->parsedData['episodes'], $delay);
+
+        // Buat ZIP file di storage temporary
+        $zipPath = storage_path('app/public/episodes_html_' . time() . '.zip');
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE) === TRUE) {
+            foreach ($episodes as $ep) {
+                $epNum = $ep['url'] ?? 'episode';
+                $epNum = preg_match('/episode[- ]?(\d+)/i', $epNum, $m) ? $m[1] : uniqid();
+                $filename = 'episode-' . $epNum . '.html';
+                $zip->addFromString($filename, $ep['html'] ?? '');
+            }
+            $zip->close();
+        } else {
+            Notification::make()
+                ->title('Gagal membuat ZIP')
+                ->body('Tidak bisa membuat file ZIP')
+                ->danger()
+                ->send();
+            return;
+        }
+
+        // Kirim file ZIP ke browser (download)
+        return response()->download($zipPath)->deleteFileAfterSend(true);
+    }
 {
     use Forms\Concerns\InteractsWithForms;
     use WithFileUploads;

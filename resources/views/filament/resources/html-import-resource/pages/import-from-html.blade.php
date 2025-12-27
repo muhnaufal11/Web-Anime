@@ -58,6 +58,9 @@
                             🚀 Mulai Import
                         @endif
                     </x-filament::button>
+                    <x-filament::button color="primary" wire:click="downloadAllEpisodeHtmls" type="button">
+                        ⬇️ Download Semua HTML Episode
+                    </x-filament::button>
                     
                     <x-filament::button type="button" color="secondary" wire:click="clearData">
                         🗑️ Clear
