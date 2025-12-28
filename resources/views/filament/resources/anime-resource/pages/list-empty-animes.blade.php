@@ -58,18 +58,22 @@
                 </div>
             @empty
                 <div class="p-10 text-center bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 dark:bg-gray-900 dark:border-gray-700">
-                    <p class="text-gray-500 italic">Tidak ada anime kosong ditemukan untuk filter ini. ✅</p>
+                    <p class="text-gray-500 italic">Tidak ada anime kosong ditemukan. ✅</p>
                 </div>
             @endforelse
         </div>
     </div>
 
-    {{-- Script Copy tetap dipertahankan --}}
+    {{-- Script Copy dengan Notifikasi Filament Toast --}}
     <script>
         function copyToClipboard(text) {
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(text).then(() => {
-                    alert('Judul disalin: ' + text);
+                    new FilamentNotification()
+                        .title('Berhasil disalin!')
+                        .body('Judul "' + text + '" sudah ada di clipboard.')
+                        .success()
+                        .send();
                 });
             } else {
                 let textArea = document.createElement("textarea");
@@ -82,9 +86,15 @@
                 textArea.select();
                 try {
                     document.execCommand('copy');
-                    alert('Judul disalin: ' + text);
+                    new FilamentNotification()
+                        .title('Berhasil disalin!')
+                        .success()
+                        .send();
                 } catch (err) {
-                    console.error('Gagal menyalin', err);
+                    new FilamentNotification()
+                        .title('Gagal menyalin')
+                        .danger()
+                        .send();
                 }
                 document.body.removeChild(textArea);
             }
