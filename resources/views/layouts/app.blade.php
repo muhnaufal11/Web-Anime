@@ -243,7 +243,7 @@
 
             <div class="border-t border-white/10 pt-6 sm:pt-8 text-center">
                 <p class="text-gray-500 text-xs sm:text-sm">
-                    © 2024 nipnime. All rights reserved. | Made with <span class="text-red-600">❤</span> for anime fans
+                    © 2025 nipnime. All rights reserved. | Made with <span class="text-red-600">❤</span> for anime fans
                 </p>
             </div>
         </div>
