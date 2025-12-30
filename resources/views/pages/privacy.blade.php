@@ -102,7 +102,7 @@
                 Jika Anda memiliki pertanyaan tentang kebijakan privasi ini, silakan hubungi kami:
             </p>
             <div class="bg-white/5 rounded-xl p-4 mt-4">
-                <p class="text-white font-mono">Email: privacy@nipnime.com</p>
+                <p class="text-white font-mono">Email: privacy@nipnime.my.id</p>
             </div>
 
             <p class="text-gray-500 text-sm mt-8">
