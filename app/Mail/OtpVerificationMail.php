@@ -29,6 +29,6 @@ class OtpVerificationMail extends Mailable implements ShouldQueue
     public function build()
     {
         return $this->subject('Verifikasi Email NipNime')
-            ->view('emails.otp_verification');
+            ->markdown('emails.otp_verification'); // GANTI 'view' JADI 'markdown'
     }
 }
