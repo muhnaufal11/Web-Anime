@@ -11,6 +11,7 @@ use Filament\Resources\Resource;
 use Filament\Resources\Table;
 use Filament\Tables;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage; // <--- PENTING: Import Library Storage
 
 class EpisodeResource extends Resource
 {
@@ -84,7 +85,6 @@ class EpisodeResource extends Resource
                     ->action(function (Episode $record, array $data) {
                         $service = app(\App\Services\AnimeSailService::class);
 
-                        // Determine HTML input precedence: pasted > uploaded > none
                         $html = null;
                         if (!empty($data['episode_html'])) {
                             $html = $data['episode_html'];
@@ -95,7 +95,6 @@ class EpisodeResource extends Resource
                             }
                         }
 
-                        // HTML is now required
                         if (empty($html)) {
                             \Filament\Notifications\Notification::make()
                                 ->title('HTML Required')
@@ -105,7 +104,6 @@ class EpisodeResource extends Resource
                             return;
                         }
 
-                        // Parse servers from HTML
                         $servers = $service->getEpisodeServersFromHtml($html);
                         
                         if (empty($servers)) {
@@ -117,7 +115,6 @@ class EpisodeResource extends Resource
                             return;
                         }
 
-                        // Optional delete existing not found
                         if (!empty($data['delete_existing'])) {
                             $keepUrls = collect($servers)->pluck('url')->unique()->values()->all();
                             if (!empty($keepUrls)) {
@@ -148,6 +145,12 @@ class EpisodeResource extends Resource
                             if ($vs->wasRecentlyCreated) { $created++; } else { $updated++; }
                         }
 
+                        // --- AUTO CLEANUP SINGLE UPLOAD ---
+                        // Hapus file setelah selesai diproses
+                        if (!empty($data['episode_html_file'])) {
+                            Storage::disk('public')->delete($data['episode_html_file']);
+                        }
+
                         \Filament\Notifications\Notification::make()
                             ->title('Sync servers completed')
                             ->success()
@@ -171,9 +174,9 @@ class EpisodeResource extends Resource
                             ->label('Upload HTML Files (per episode)')
                             ->multiple()
                             ->acceptedFileTypes(['text/html', 'text/plain', '.html', '.htm', '.txt'])
-                            ->directory('uploads/bulk-html')
-                            ->preserveFilenames() // <--- WAJIB: Agar nama file asli tidak berubah
-                            ->helperText('Upload file HTML. Sistem otomatis mencocokkan "Episode X" di nama file dengan nomor episode.'),
+                            ->directory('uploads/bulk-html') // Folder sementara
+                            ->preserveFilenames()
+                            ->helperText('Upload file HTML. Sistem akan membaca, sinkronisasi, lalu MENGHAPUS file otomatis agar hemat memori.'),
                         Forms\Components\Toggle::make('delete_existing')
                             ->label('Hapus server lama yang tidak ditemukan')
                             ->default(false),
@@ -185,23 +188,19 @@ class EpisodeResource extends Resource
                         
                         $episodeHtmlMap = [];
                         
-                        // --- PROSES MAPPING FILE ---
+                        // --- 1. BACA & MAPPING FILE ---
                         foreach ($htmlFiles as $file) {
                             $path = storage_path('app/public/' . $file);
                             
                             if (is_file($path)) {
-                                // [FIX 1] urldecode: Mengatasi spasi yg jadi %20
                                 $filename = urldecode(basename($file));
                                 $content = file_get_contents($path);
                                 
-                                // [FIX 2] Regex yang lebih fleksibel & akurat
-                                // Logic: Cari kata "Episode" atau "Ep", abaikan spasi/strip, ambil angkanya
+                                // Regex Cerdas
                                 if (preg_match('/(?:Episode|Ep)[^0-9]*(\d+)/i', $filename, $matches)) {
                                     $epNum = (int) $matches[1];
                                     $episodeHtmlMap[$epNum] = $content;
-                                } 
-                                // Logic Backup: Cari angka di akhir nama file (misal: "Judul - 05.html")
-                                elseif (preg_match('/[\s\-_](\d+)\.(?:html|txt|htm)$/i', $filename, $matches)) {
+                                } elseif (preg_match('/[\s\-_](\d+)\.(?:html|txt|htm)$/i', $filename, $matches)) {
                                     $epNum = (int) $matches[1];
                                     $episodeHtmlMap[$epNum] = $content;
                                 }
@@ -212,7 +211,7 @@ class EpisodeResource extends Resource
                             \Filament\Notifications\Notification::make()
                                 ->title('File Tidak Terbaca')
                                 ->danger()
-                                ->body('Tidak ada file HTML yang cocok dengan nomor episode, atau HTML kosong.')
+                                ->body('Tidak ada file HTML yang cocok dengan nomor episode.')
                                 ->send();
                             return;
                         }
@@ -224,33 +223,28 @@ class EpisodeResource extends Resource
                         
                         $recordsList = $records->sortBy('episode_number')->values();
                         
+                        // --- 2. PROSES DATA KE DATABASE ---
                         foreach ($recordsList as $episode) {
                             $html = null;
                             $epNum = $episode->episode_number;
 
-                            // [FIX 3] HANYA PAKAI FILE YANG NOMORNYA COCOK
-                            // Tidak ada lagi tebak-tebakan urutan array
                             if (isset($episodeHtmlMap[$epNum])) {
                                 $html = $episodeHtmlMap[$epNum];
                             } elseif (!empty($globalHtml)) {
                                 $html = $globalHtml;
                             }
                             
-                            // Jika tidak ada file untuk nomor ini, SKIP.
                             if (empty($html)) {
                                 $skippedEpisodes++;
                                 continue;
                             }
                             
-                            // Parsing
                             $servers = $service->getEpisodeServersFromHtml($html);
-                            
                             if (empty($servers)) {
                                 $skippedEpisodes++;
                                 continue;
                             }
                             
-                            // Hapus yang lama (opsional)
                             if (!empty($data['delete_existing'])) {
                                 $keepUrls = collect($servers)->pluck('url')->unique()->values()->all();
                                 if (!empty($keepUrls)) {
@@ -260,7 +254,6 @@ class EpisodeResource extends Resource
                                 }
                             }
                             
-                            // Simpan yang baru
                             foreach ($servers as $serverData) {
                                 $embedCode = \App\Services\VideoEmbedHelper::toEmbedCode(
                                     $serverData['url'],
@@ -282,30 +275,39 @@ class EpisodeResource extends Resource
                             }
                             $processedEpisodes++;
                         }
+
+                        // --- 3. AUTO CLEANUP (FITUR FILE SAMPAH) ---
+                        // Hapus semua file yang baru saja diupload dari disk
+                        foreach ($htmlFiles as $file) {
+                            if (Storage::disk('public')->exists($file)) {
+                                Storage::disk('public')->delete($file);
+                            }
+                        }
                         
+                        // Bersihkan folder jika kosong (opsional, agar folder rapi)
+                        // Storage::disk('public')->deleteDirectory('uploads/bulk-html');
+
                         $message = "Processed: {$processedEpisodes} | Created: {$totalCreated} | Updated: {$totalUpdated}";
                         if ($skippedEpisodes > 0) {
-                            $message .= " | Skipped: {$skippedEpisodes} (No matching file)";
+                            $message .= " | Skipped: {$skippedEpisodes}";
                         }
                         
                         \Filament\Notifications\Notification::make()
-                            ->title('Bulk Sync Completed')
+                            ->title('Bulk Sync Completed & Cleaned Up')
                             ->success()
-                            ->body($message)
+                            ->body($message . " (File sampah telah dihapus)")
                             ->send();
                     })
                     ->deselectRecordsAfterCompletion()
                     ->requiresConfirmation()
                     ->modalHeading('Bulk Sync Video Servers')
-                    ->modalSubheading('Sync video servers untuk semua episode yang dipilih'),
+                    ->modalSubheading('Upload file -> Proses -> File otomatis dihapus setelah selesai.'),
             ]);
     }
     
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
+        return [];
     }
     
     public static function getPages(): array
