@@ -41,6 +41,7 @@ Route::post('/contact', [PageController::class, 'sendContact'])->name('contact.s
 Route::get('/api/video/proxy/animesail/{playerType}', [VideoProxyController::class, 'proxyAnimeSail'])->name('video.proxy.animesail');
 Route::get('/api/video/proxy/external', [VideoProxyController::class, 'proxyExternal'])->name('video.proxy.external');
 
+
 // Auth Routes
 Route::prefix('auth')->name('auth.')->group(function () {
     Route::get('login', [AuthController::class, 'showLogin'])->name('login');
@@ -48,10 +49,17 @@ Route::prefix('auth')->name('auth.')->group(function () {
     Route::get('register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('register', [AuthController::class, 'register']);
     Route::post('logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
+
+    // OTP Verification
+    Route::middleware('auth')->group(function () {
+        Route::get('otp', [AuthController::class, 'showOtpForm'])->name('otp');
+        Route::post('otp', [AuthController::class, 'verifyOtp'])->name('otp.verify');
+        Route::post('otp/resend', [AuthController::class, 'resendOtp'])->name('otp.resend');
+    });
 });
 
-// Profile Routes (Auth Required)
-Route::middleware('auth')->group(function () {
+// Profile Routes (Auth + OTP Verified Required)
+Route::middleware(['auth', 'otp.verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.update-password');
