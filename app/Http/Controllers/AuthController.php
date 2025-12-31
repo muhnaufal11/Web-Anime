@@ -66,50 +66,56 @@ class AuthController extends Controller
     {
         $request->validate(['otp' => 'required|digits:6']);
 
-        // SKENARIO A: User Lama (Sudah ada di DB tapi belum verify)
+        // --- SKENARIO A: USER LAMA (Sudah di DB tapi belum verif) ---
         if (Auth::check()) {
             $user = Auth::user();
-            $cacheKey = 'otp_' . $user->id; // Key khusus user lama
-            $cachedOtp = Cache::get($cacheKey);
+            
+            // Cek apakah OTP cocok dengan yang di cache?
+            // (User lama harus klik "Kirim Ulang" dulu biar dapet OTP di cache)
+            $cacheKey = 'otp_' . $user->id;
+            $cachedOtp = \Cache::get($cacheKey);
 
-            if ($request->otp == $cachedOtp) {
+            if ($cachedOtp && $request->otp == $cachedOtp) {
+                // UPDATE DATABASE
                 $user->email_verified_at = now();
                 $user->save();
-                Cache::forget($cacheKey);
-                return redirect()->route('home')->with('success', 'Akun berhasil diverifikasi!');
+                
+                // Hapus OTP bekas & Redirect
+                \Cache::forget($cacheKey);
+                
+                // Redirect ke home dengan pesan sukses
+                return redirect()->route('home')->with('success', 'Verifikasi berhasil! Selamat datang.');
             }
         } 
         
-        // SKENARIO B: User Baru (Calon pendaftar, data masih di Cache)
+        // --- SKENARIO B: USER BARU (Belum ada di DB) ---
         else {
             $email = session('otp_email');
-            if (!$email) return redirect()->route('auth.register')->with('error', 'Sesi habis, daftar ulang.');
+            if (!$email) return redirect()->route('auth.register')->with('error', 'Sesi habis.');
 
             $cacheKey = 'regist_temp_' . $email;
-            $tempData = Cache::get($cacheKey);
+            $tempData = \Cache::get($cacheKey);
 
-            // Cek apakah OTP cocok dengan data di Cache
             if ($tempData && $request->otp == $tempData['otp']) {
-                
-                // BARU SEKARANG KITA BUAT AKUNNYA DI DATABASE
+                // CREATE USER BARU (Langsung Verified)
                 $user = User::create([
                     'name' => $tempData['name'],
                     'email' => $tempData['email'],
                     'password' => $tempData['password'],
-                    'email_verified_at' => now(), // Langsung verified!
+                    'email_verified_at' => now(), // <--- PENTING: Langsung diisi!
                 ]);
 
-                // Hapus data sementara & login otomatis
-                Cache::forget($cacheKey);
+                // Bersihkan cache & Login
+                \Cache::forget($cacheKey);
                 session()->forget('otp_email');
                 
                 Auth::login($user);
                 
-                return redirect()->route('home')->with('success', 'Pendaftaran sukses & Terverifikasi!');
+                return redirect()->route('home')->with('success', 'Pendaftaran Berhasil!');
             }
         }
 
-        return back()->withErrors(['otp' => 'Kode OTP salah atau kadaluarsa.']);
+        return back()->withErrors(['otp' => 'Kode OTP salah atau belum me-request kode baru.']);
     }
 
     // --- 3. KIRIM ULANG OTP (HYBRID) ---

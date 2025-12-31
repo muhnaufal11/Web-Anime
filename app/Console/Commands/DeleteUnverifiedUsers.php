@@ -27,9 +27,13 @@ class DeleteUnverifiedUsers extends Command
      */
     public function handle()
     {
+        // Hapus user yang:
+        // 1. email_verified_at nya KOSONG (NULL)
+        // 2. DAN dibuat LEBIH DARI 7 HARI yang lalu (1 Minggu)
         $count = User::whereNull('email_verified_at')
-            ->where('created_at', '<', now()->subDay())
+            ->where('created_at', '<', now()->subDays(7)) // Ganti subDay() jadi subDays(7)
             ->delete();
-        $this->info("Deleted $count unverified users.");
+
+        $this->info("Berhasil menghapus $count akun sampah yang sudah seminggu belum verifikasi.");
     }
 }
