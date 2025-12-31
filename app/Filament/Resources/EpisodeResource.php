@@ -75,6 +75,7 @@ class EpisodeResource extends Resource
                             ->label('Upload Episode HTML (opsional)')
                             ->acceptedFileTypes(['text/html','text/plain'])
                             ->directory('uploads/html-episodes')
+                            ->preserveFilenames()
                             ->helperText('Alternatif: upload file HTML halaman episode'),
                         Forms\Components\Toggle::make('delete_existing')
                             ->label('Hapus server yang tidak ditemukan')
@@ -186,24 +187,26 @@ class EpisodeResource extends Resource
                         $fileContents = []; // Store all file contents for fallback
                         
                         foreach ($htmlFiles as $file) {
-                            $path = storage_path('app/public/' . $file);
-                            if (is_file($path)) {
-                                $filename = basename($file);
-                                $content = file_get_contents($path);
-                                $fileContents[] = $content;
-                                
-                                // Try to extract episode number from filename
-                                // Pattern: "Episode X", "Ep X", "EP-X", "episode_X", or just "X" at the end
-                                if (preg_match('/[Ee]p(?:isode)?[\s\-_]*(\d+)/i', $filename, $matches)) {
-                                    $epNum = (int) $matches[1];
-                                    $episodeHtmlMap[$epNum] = $content;
-                                } elseif (preg_match('/(\d+)(?:\.[^.]+)?$/', $filename, $matches)) {
-                                    // Number at end of filename before extension
-                                    $epNum = (int) $matches[1];
-                                    $episodeHtmlMap[$epNum] = $content;
-                                }
-                            }
-                        }
+    $path = storage_path('app/public/' . $file);
+    if (is_file($path)) {
+        $filename = basename($file); // Sekarang ini akan membaca nama ASLI
+        $content = file_get_contents($path);
+        $fileContents[] = $content;
+
+        // --- UPDATE LOGIKA DETEKSI NOMOR ---
+        
+        // Coba cari pola "Episode 10", "Ep 10", "E10"
+        if (preg_match('/(?:ep|episode|e)[._\-\s]*(\d+)/i', $filename, $matches)) {
+            $epNum = (int) $matches[1];
+            $episodeHtmlMap[$epNum] = $content;
+        } 
+        // Coba cari angka yang berdiri sendiri atau di akhir (misal: "One Piece - 1050.html")
+        elseif (preg_match('/(?:^|[\s\-_\[\(])(\d+)(?:[\s\-_\]\)\.]|$)/', $filename, $matches)) {
+            $epNum = (int) $matches[1];
+            $episodeHtmlMap[$epNum] = $content;
+        }
+    }
+}
                         
                         if (empty($globalHtml) && empty($episodeHtmlMap) && empty($fileContents)) {
                             \Filament\Notifications\Notification::make()
