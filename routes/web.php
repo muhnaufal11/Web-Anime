@@ -44,19 +44,21 @@ Route::get('/api/video/proxy/external', [VideoProxyController::class, 'proxyExte
 
 // Auth Routes
 Route::prefix('auth')->name('auth.')->group(function () {
+    // Halaman Tamu (Login/Register)
     Route::get('login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('login', [AuthController::class, 'login']);
     Route::get('register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('register', [AuthController::class, 'register']);
-    Route::post('logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
+    
+    // Halaman OTP (SEKARANG KITA TARUH DILUAR MIDDLEWARE AUTH)
+    // Karena Controller sudah punya logika pengecekan sendiri
+    Route::get('otp', [AuthController::class, 'showOtpForm'])->name('otp');
+    Route::post('otp', [AuthController::class, 'verifyOtp'])->name('otp.verify');
+    Route::post('otp/resend', [AuthController::class, 'resendOtp'])->name('otp.resend');
 
-    // OTP Verification
-    Route::middleware('auth')->group(function () {
-        Route::get('otp', [AuthController::class, 'showOtpForm'])->name('otp');
-        Route::post('otp', [AuthController::class, 'verifyOtp'])->name('otp.verify');
-        Route::post('otp/resend', [AuthController::class, 'resendOtp'])->name('otp.resend');
-    });
-});
+    // Logout tetap butuh auth
+    Route::post('logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
+});;
 
 // Profile Routes (Auth + OTP Verified Required)
 Route::middleware(['auth', 'otp.verified'])->group(function () {
