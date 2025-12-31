@@ -172,7 +172,8 @@ class EpisodeResource extends Resource
                             ->multiple()
                             ->acceptedFileTypes(['text/html', 'text/plain', '.html', '.htm', '.txt'])
                             ->directory('uploads/bulk-html')
-                            ->helperText('Upload file HTML per episode. Jika jumlah file = jumlah episode yang dipilih, akan dicocokkan urut. Atau nama file mengandung "Episode X" / "Ep X".'),
+                            ->preserveFilenames() // <--- WAJIB: Agar nama file asli tidak berubah
+                            ->helperText('Upload file HTML. Sistem otomatis mencocokkan "Episode X" di nama file dengan nomor episode.'),
                         Forms\Components\Toggle::make('delete_existing')
                             ->label('Hapus server lama yang tidak ditemukan')
                             ->default(false),
@@ -182,41 +183,36 @@ class EpisodeResource extends Resource
                         $globalHtml = $data['html_content'] ?? '';
                         $htmlFiles = $data['html_files'] ?? [];
                         
-                        // Build episode number to HTML mapping from uploaded files
                         $episodeHtmlMap = [];
-                        $fileContents = []; // Store all file contents for fallback
                         
+                        // --- PROSES MAPPING FILE ---
                         foreach ($htmlFiles as $file) {
                             $path = storage_path('app/public/' . $file);
                             
                             if (is_file($path)) {
-                                $filename = basename($file);
+                                // [FIX 1] urldecode: Mengatasi spasi yg jadi %20
+                                $filename = urldecode(basename($file));
                                 $content = file_get_contents($path);
-                                $fileContents[] = $content; // Backup untuk fallback urutan
                                 
-                                // --- LOGIKA KHUSUS FILE KAMU ---
-                                // Mencari kata "Episode" diikuti spasi dan angka
-                                // Cocok untuk: "Honey Lemon Soda Episode 5 – AnimeSail.html"
-                                if (preg_match('/Episode\s+(\d+)/i', $filename, $matches)) {
+                                // [FIX 2] Regex yang lebih fleksibel & akurat
+                                // Logic: Cari kata "Episode" atau "Ep", abaikan spasi/strip, ambil angkanya
+                                if (preg_match('/(?:Episode|Ep)[^0-9]*(\d+)/i', $filename, $matches)) {
                                     $epNum = (int) $matches[1];
                                     $episodeHtmlMap[$epNum] = $content;
-                                    
-                                    // Debugging (Opsional: Cek di laravel.log jika masih error)
-                                    // \Illuminate\Support\Facades\Log::info("Matched: $filename as Episode $epNum");
                                 } 
-                                // Jaga-jaga jika ada file yang cuma "Ep 5..."
-                                elseif (preg_match('/Ep(?:isode)?\.?\s*(\d+)/i', $filename, $matches)) {
+                                // Logic Backup: Cari angka di akhir nama file (misal: "Judul - 05.html")
+                                elseif (preg_match('/[\s\-_](\d+)\.(?:html|txt|htm)$/i', $filename, $matches)) {
                                     $epNum = (int) $matches[1];
                                     $episodeHtmlMap[$epNum] = $content;
                                 }
                             }
                         }
                         
-                        if (empty($globalHtml) && empty($episodeHtmlMap) && empty($fileContents)) {
+                        if (empty($globalHtml) && empty($episodeHtmlMap)) {
                             \Filament\Notifications\Notification::make()
-                                ->title('HTML Required')
+                                ->title('File Tidak Terbaca')
                                 ->danger()
-                                ->body('Mohon paste HTML atau upload file HTML terlebih dahulu.')
+                                ->body('Tidak ada file HTML yang cocok dengan nomor episode, atau HTML kosong.')
                                 ->send();
                             return;
                         }
@@ -226,38 +222,27 @@ class EpisodeResource extends Resource
                         $processedEpisodes = 0;
                         $skippedEpisodes = 0;
                         
-                        // If we have files but couldn't map them, use them in order
-                        $fileIndex = 0;
                         $recordsList = $records->sortBy('episode_number')->values();
                         
                         foreach ($recordsList as $episode) {
-                            // Determine which HTML to use for this episode
                             $html = null;
-                            
-                            // Priority 1: Specific HTML file for this episode number
-                            if (isset($episodeHtmlMap[$episode->episode_number])) {
-                                $html = $episodeHtmlMap[$episode->episode_number];
-                            }
-                            // Priority 2: Use files in order (if same count as selected episodes)
-                            elseif (!empty($fileContents) && count($fileContents) === $recordsList->count()) {
-                                $html = $fileContents[$fileIndex] ?? null;
-                                $fileIndex++;
-                            }
-                            // Priority 3: Global HTML (same for all)
-                            elseif (!empty($globalHtml)) {
+                            $epNum = $episode->episode_number;
+
+                            // [FIX 3] HANYA PAKAI FILE YANG NOMORNYA COCOK
+                            // Tidak ada lagi tebak-tebakan urutan array
+                            if (isset($episodeHtmlMap[$epNum])) {
+                                $html = $episodeHtmlMap[$epNum];
+                            } elseif (!empty($globalHtml)) {
                                 $html = $globalHtml;
                             }
-                            // Priority 4: Use any available file content
-                            elseif (!empty($fileContents)) {
-                                $html = $fileContents[$fileIndex % count($fileContents)] ?? null;
-                                $fileIndex++;
-                            }
                             
+                            // Jika tidak ada file untuk nomor ini, SKIP.
                             if (empty($html)) {
                                 $skippedEpisodes++;
                                 continue;
                             }
                             
+                            // Parsing
                             $servers = $service->getEpisodeServersFromHtml($html);
                             
                             if (empty($servers)) {
@@ -265,7 +250,7 @@ class EpisodeResource extends Resource
                                 continue;
                             }
                             
-                            // Optional delete existing
+                            // Hapus yang lama (opsional)
                             if (!empty($data['delete_existing'])) {
                                 $keepUrls = collect($servers)->pluck('url')->unique()->values()->all();
                                 if (!empty($keepUrls)) {
@@ -275,6 +260,7 @@ class EpisodeResource extends Resource
                                 }
                             }
                             
+                            // Simpan yang baru
                             foreach ($servers as $serverData) {
                                 $embedCode = \App\Services\VideoEmbedHelper::toEmbedCode(
                                     $serverData['url'],
@@ -299,11 +285,11 @@ class EpisodeResource extends Resource
                         
                         $message = "Processed: {$processedEpisodes} | Created: {$totalCreated} | Updated: {$totalUpdated}";
                         if ($skippedEpisodes > 0) {
-                            $message .= " | Skipped: {$skippedEpisodes}";
+                            $message .= " | Skipped: {$skippedEpisodes} (No matching file)";
                         }
                         
                         \Filament\Notifications\Notification::make()
-                            ->title('Bulk Sync Completed!')
+                            ->title('Bulk Sync Completed')
                             ->success()
                             ->body($message)
                             ->send();
