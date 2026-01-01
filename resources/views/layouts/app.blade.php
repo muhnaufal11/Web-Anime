@@ -37,7 +37,7 @@
                     <a href="{{ route('home') }}" class="group flex items-center gap-2 transition-transform hover:scale-105">
                         <img src="{{ asset('images/logo.png') }}" 
                              alt="NipNime Logo" 
-                             class="h-10 sm:h-14 w-auto object-contain drop-shadow-[0_0_15px_rgba(220,38,38,0.6)] transition-all duration-300 group-hover:drop-shadow-[0_0_20px_rgba(220,38,38,0.9)]">
+                             class="h-15 sm:h-18 w-auto object-contain drop-shadow-[0_0_15px_rgba(220,38,38,0.6)] transition-all duration-300 group-hover:drop-shadow-[0_0_20px_rgba(220,38,38,0.9)]">
                         
                         </a>
                     
