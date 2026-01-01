@@ -1,15 +1,64 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+    --bg-page: #0f1115;
+    --bg-surface: #1a1d24;
+    --bg-elevated: #131722;
+    --bg-subtle: #0a0d13;
+    --input-bg: #1a1d24;
+    --card-stroke: rgba(255, 255, 255, 0.08);
+    --muted-soft: rgba(255, 255, 255, 0.05);
+    --muted-strong: rgba(255, 255, 255, 0.12);
+    --text-primary: #e5e7eb;
+    --text-secondary: #cbd5e1;
+    --text-tertiary: #94a3b8;
+    --shadow-strong: rgba(0, 0, 0, 0.5);
+    --gradient-from: #0f1115;
+    --gradient-via: #0f1115;
+    --gradient-to: #1a1d24;
+    --glass: rgba(255, 255, 255, 0.08);
+    --scrollbar-track: #0f1115;
+    --scrollbar-thumb: #dc2626;
+    --scrollbar-thumb-hover: #b91c1c;
+}
+
+:root[data-theme='light'] {
+    color-scheme: light;
+    --bg-page: #f5f7fb;
+    --bg-surface: #ffffff;
+    --bg-elevated: #eef2f8;
+    --bg-subtle: #e4e9f3;
+    --input-bg: #edf1f7;
+    --card-stroke: rgba(15, 23, 42, 0.08);
+    --muted-soft: rgba(15, 23, 42, 0.04);
+    --muted-strong: rgba(15, 23, 42, 0.07);
+    --text-primary: #0f172a;
+    --text-secondary: #1f2937;
+    --text-tertiary: #475569;
+    --shadow-strong: rgba(15, 23, 42, 0.08);
+    --gradient-from: #f3f6fb;
+    --gradient-via: #eef3fb;
+    --gradient-to: #ffffff;
+    --glass: rgba(15, 23, 42, 0.06);
+    --scrollbar-track: #e5e7eb;
+    --scrollbar-thumb: #cbd5e1;
+    --scrollbar-thumb-hover: #94a3b8;
+}
+
 /* Base Styles */
 @layer base {
     html {
         scroll-behavior: smooth;
         @apply antialiased;
+        background-color: var(--bg-page);
     }
 
     body {
-        @apply bg-[#0f1115] text-gray-300;
+        background-color: var(--bg-page);
+        color: var(--text-primary);
+        transition: background-color 200ms ease, color 200ms ease;
     }
 
     /* Custom Scrollbar */
@@ -18,15 +67,16 @@
     }
 
     ::-webkit-scrollbar-track {
-        @apply bg-[#0f1115];
+        background: var(--scrollbar-track);
     }
 
     ::-webkit-scrollbar-thumb {
-        @apply bg-red-600 rounded-full;
+        background: var(--scrollbar-thumb);
+        @apply rounded-full;
     }
 
     ::-webkit-scrollbar-thumb:hover {
-        @apply bg-red-700;
+        background: var(--scrollbar-thumb-hover);
     }
 }
 
@@ -107,6 +157,52 @@
 
 /* Component Styles */
 @layer components {
+    /* Theme Helpers */
+    .theme-body {
+        background: var(--bg-page);
+        color: var(--text-primary);
+    }
+
+    .theme-surface {
+        background: var(--bg-surface);
+        color: var(--text-primary);
+        border-color: var(--card-stroke);
+    }
+
+    .theme-elevated {
+        background: var(--bg-elevated);
+        color: var(--text-primary);
+    }
+
+    .theme-border {
+        border-color: var(--card-stroke);
+    }
+
+    .theme-input {
+        background: var(--input-bg);
+        color: var(--text-primary);
+        border-color: var(--muted-strong);
+    }
+
+    .theme-muted {
+        color: var(--text-tertiary);
+    }
+
+    .theme-strong {
+        color: var(--text-secondary);
+    }
+
+    .theme-card {
+        background: linear-gradient(145deg, var(--bg-surface), var(--bg-subtle));
+        border-color: var(--card-stroke);
+        color: var(--text-primary);
+    }
+
+    .theme-glass {
+        background: var(--glass);
+        @apply backdrop-blur-lg;
+    }
+
     /* Card Hover Effect */
     .card-hover {
         @apply transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:shadow-red-600/20;
@@ -115,19 +211,27 @@
     /* Button Styles */
     .btn-primary {
         @apply px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold rounded-xl transition-all transform hover:scale-105 shadow-lg shadow-red-600/30;
+        color: #fff !important;
     }
 
     .btn-secondary {
         @apply px-6 py-3 bg-white/10 hover:bg-white/20 border-2 border-white/30 text-white font-bold rounded-xl transition-all backdrop-blur-sm;
+        color: var(--text-primary) !important;
+        background: var(--muted-soft);
+        border-color: var(--card-stroke);
     }
 
     /* Badge Styles */
     .badge-primary {
         @apply px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white font-black rounded-xl shadow-lg shadow-red-600/30 text-sm uppercase tracking-wider;
+        color: #fff !important;
     }
 
     .badge-secondary {
         @apply px-4 py-2 bg-white/10 border border-white/20 text-gray-300 font-semibold rounded-xl backdrop-blur-sm text-sm;
+        background: var(--muted-soft);
+        border-color: var(--card-stroke);
+        color: var(--text-secondary);
     }
 
     /* Section Header */
@@ -141,12 +245,14 @@
 
     /* Gradient Background */
     .gradient-bg {
-        @apply bg-gradient-to-br from-[#1a1d24] to-[#0f1115];
+        background: linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-subtle) 100%);
     }
 
     /* Glass Effect */
     .glass-effect {
-        @apply bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl;
+        background: var(--glass);
+        @apply backdrop-blur-md border rounded-2xl;
+        border-color: var(--card-stroke);
     }
 }
 
@@ -196,5 +302,103 @@
         .text-xl {
             font-size: 1.25rem;
         }
+    }
+}
+
+/* Theme-aware overrides so legacy classes respond to light mode */
+@layer utilities {
+    [data-theme='light'] .bg-\[\#0f1115\],
+    [data-theme='light'] .bg-\[\#0f1115\]\/95 {
+        background-color: var(--bg-page) !important;
+    }
+
+    [data-theme='light'] .bg-\[\#1a1d24\],
+    [data-theme='light'] .bg-\[\#0a0d13\] {
+        background-color: var(--bg-surface) !important;
+    }
+
+    [data-theme='light'] .from-\[\#0f1115\] {
+        --tw-gradient-from: var(--gradient-from) !important;
+        --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgb(255 255 255 / 0));
+    }
+
+    [data-theme='light'] .via-\[\#0f1115\] {
+        --tw-gradient-stops: var(--tw-gradient-from), var(--gradient-via), var(--tw-gradient-to, rgb(255 255 255 / 0));
+    }
+
+    [data-theme='light'] .to-\[\#1a1d24\] {
+        --tw-gradient-to: var(--gradient-to) !important;
+    }
+
+    [data-theme='light'] .text-gray-200,
+    [data-theme='light'] .text-gray-300 {
+        color: var(--text-primary) !important;
+    }
+
+    [data-theme='light'] .text-gray-400 {
+        color: var(--text-secondary) !important;
+    }
+
+    [data-theme='light'] .text-gray-500,
+    [data-theme='light'] .text-gray-600 {
+        color: var(--text-tertiary) !important;
+    }
+
+    [data-theme='light'] .text-white {
+        color: var(--text-primary) !important;
+    }
+
+    [data-theme='light'] .bg-white\/5,
+    [data-theme='light'] .bg-white\/10 {
+        background-color: var(--muted-soft) !important;
+    }
+
+    [data-theme='light'] .bg-white\/20,
+    [data-theme='light'] .bg-white\/30 {
+        background-color: var(--muted-strong) !important;
+    }
+
+    [data-theme='light'] .border-white\/5,
+    [data-theme='light'] .border-white\/10,
+    [data-theme='light'] .border-white\/20,
+    [data-theme='light'] .border-white\/30 {
+        border-color: var(--card-stroke) !important;
+    }
+
+    [data-theme='light'] .bg-gray-800,
+    [data-theme='light'] .bg-gray-800\/50,
+    [data-theme='light'] .bg-gray-700 {
+        background-color: var(--bg-elevated) !important;
+    }
+
+    [data-theme='light'] .bg-gray-600,
+    [data-theme='light'] .bg-gray-600\/50 {
+        background-color: #cbd5e1 !important;
+    }
+
+    [data-theme='light'] .bg-black\/90 {
+        background-color: rgba(15, 23, 42, 0.82) !important;
+    }
+
+    [data-theme='light'] .bg-black\/60,
+    [data-theme='light'] .bg-black\/40 {
+        background-color: rgba(15, 23, 42, 0.55) !important;
+    }
+
+    [data-theme='light'] .shadow-black\/20,
+    [data-theme='light'] .shadow-black\/30,
+    [data-theme='light'] .shadow-black\/50 {
+        box-shadow: 0 10px 40px var(--shadow-strong) !important;
+    }
+
+    [data-theme='light'] .bg-red-600,
+    [data-theme='light'] .bg-red-700,
+    [data-theme='light'] .from-red-600,
+    [data-theme='light'] .to-red-700,
+    [data-theme='light'] .bg-purple-600,
+    [data-theme='light'] .bg-purple-700,
+    [data-theme='light'] .from-purple-600,
+    [data-theme='light'] .to-purple-700 {
+        color: #fff !important;
     }
 }

@@ -1,19 +1,31 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="scroll-smooth">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="scroll-smooth" data-theme="dark">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title') - nipnime</title>
+
+    <script>
+        (() => {
+            const stored = localStorage.getItem('nipnime_theme');
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = stored || (prefersDark ? 'dark' : 'light');
+            const root = document.documentElement;
+            root.dataset.theme = theme;
+            root.classList.toggle('theme-dark', theme === 'dark');
+            root.classList.toggle('theme-light', theme === 'light');
+        })();
+    </script>
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
     
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
-<body class="antialiased bg-[#0f1115] text-gray-300 font-['Inter']">
+<body class="antialiased theme-body font-['Inter']">
     
-    <nav class="bg-[#0f1115]/95 backdrop-blur-xl border-b border-white/5 sticky top-0 z-50 shadow-xl shadow-black/20">
+    <nav class="theme-surface backdrop-blur-xl border-b theme-border sticky top-0 z-50 shadow-xl shadow-black/20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16 sm:h-20">
                 <div class="flex items-center gap-4 lg:gap-10">
@@ -48,7 +60,7 @@
                 <div class="flex items-center gap-2 sm:gap-4 lg:gap-6">
                     <form action="{{ route('search') }}" method="GET" class="hidden lg:block relative group">
                         <input type="text" name="search" placeholder="Cari anime..." 
-                               class="w-72 bg-[#1a1d24] border-2 border-white/10 text-white rounded-full px-5 py-2.5 text-sm focus:border-red-600 focus:ring-2 focus:ring-red-600/30 transition-all placeholder-gray-600 focus:placeholder-gray-500">
+                               class="w-72 theme-input border-2 theme-border rounded-full px-5 py-2.5 text-sm focus:border-red-600 focus:ring-2 focus:ring-red-600/30 transition-all placeholder-gray-600 focus:placeholder-gray-500">
                         <button type="submit" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-red-500 transition">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -63,6 +75,10 @@
                     </button>
 
                     <div class="flex items-center gap-2 sm:gap-4">
+                        <button id="themeToggle" class="flex items-center gap-2 px-2 sm:px-3 py-2 rounded-lg border theme-border theme-elevated hover:scale-105 transition-all text-xs sm:text-sm font-bold uppercase tracking-wider" aria-label="Toggle tema">
+                            <span id="themeToggleIcon">🌙</span>
+                            <span id="themeToggleLabel" class="hidden xl:inline">Gelap</span>
+                        </button>
                         @auth
                             <div class="flex items-center gap-2 sm:gap-3">
                                 <span class="text-sm font-bold text-gray-300 hidden md:inline">{{ Auth::user()->name }}</span>
@@ -76,7 +92,7 @@
                                             {{ substr(Auth::user()->name, 0, 1) }}
                                         @endif
                                     </button>
-                                    <div id="profileMenu" class="absolute right-0 mt-2 w-48 bg-[#1a1d24] rounded-xl shadow-xl opacity-0 invisible transition-all duration-300 border border-white/10 z-50">
+                                    <div id="profileMenu" class="absolute right-0 mt-2 w-48 theme-card rounded-xl shadow-xl opacity-0 invisible transition-all duration-300 border theme-border z-50">
                                         <div class="p-3 border-b border-white/10 flex items-center gap-3">
                                             <div class="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-red-600 to-red-700 flex items-center justify-center text-white font-black flex-shrink-0">
                                                 @if(Auth::user()->avatar)
@@ -133,10 +149,10 @@
             </div>
         </div>
 
-        <div id="mobileSearchBar" class="hidden lg:hidden px-4 pb-4 bg-[#0f1115]">
+        <div id="mobileSearchBar" class="hidden lg:hidden px-4 pb-4 theme-surface">
             <form action="{{ route('search') }}" method="GET" class="relative">
                 <input type="text" name="search" placeholder="Cari anime..." 
-                       class="w-full bg-[#1a1d24] border-2 border-white/10 text-white rounded-full px-5 py-3 text-sm focus:border-red-600 focus:ring-2 focus:ring-red-600/30 transition-all placeholder-gray-600">
+                       class="w-full theme-input border-2 theme-border rounded-full px-5 py-3 text-sm focus:border-red-600 focus:ring-2 focus:ring-red-600/30 transition-all placeholder-gray-600">
                 <button type="submit" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-red-500 transition">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -145,7 +161,7 @@
             </form>
         </div>
 
-        <div id="mobileMenu" class="absolute top-full left-0 w-full bg-[#0f1115] border-t border-white/10 shadow-2xl z-40 transition-all duration-500 ease-in-out max-h-0 opacity-0 overflow-hidden pointer-events-none lg:hidden">
+        <div id="mobileMenu" class="absolute top-full left-0 w-full theme-surface border-t theme-border shadow-2xl z-40 transition-all duration-500 ease-in-out max-h-0 opacity-0 overflow-hidden pointer-events-none lg:hidden">
             <div class="px-4 py-4 space-y-2">
                 
                 <a href="{{ route('home') }}" style="transition-delay: 0ms;" 
@@ -192,7 +208,7 @@
 
     <main class="relative z-0">@yield('content')</main>
 
-    <footer class="bg-gradient-to-t from-[#000000] via-[#0a0c10] to-[#1a1d24] border-t border-white/10 py-10 sm:py-16 mt-10 sm:mt-20">
+    <footer class="gradient-bg border-t theme-border py-10 sm:py-16 mt-10 sm:mt-20">
         <div class="max-w-7xl mx-auto px-4">
             <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-10 mb-8 sm:mb-12">
                 <div class="col-span-2 sm:col-span-2 md:col-span-1">
@@ -262,6 +278,39 @@
             const burgerIcon = document.getElementById('burgerIcon');
             const mobileSearchBtn = document.getElementById('mobileSearchBtn');
             const mobileSearchBar = document.getElementById('mobileSearchBar');
+            const themeToggle = document.getElementById('themeToggle');
+            const themeToggleIcon = document.getElementById('themeToggleIcon');
+            const themeToggleLabel = document.getElementById('themeToggleLabel');
+
+            const updateThemeVisual = (theme) => {
+                if (themeToggleIcon) themeToggleIcon.textContent = theme === 'dark' ? '🌙' : '☀️';
+                if (themeToggleLabel) themeToggleLabel.textContent = theme === 'dark' ? 'Gelap' : 'Terang';
+                if (themeToggle) themeToggle.setAttribute('aria-pressed', theme === 'light' ? 'true' : 'false');
+            };
+
+            const applyTheme = (theme) => {
+                const root = document.documentElement;
+                root.dataset.theme = theme;
+                root.classList.toggle('theme-dark', theme === 'dark');
+                root.classList.toggle('theme-light', theme === 'light');
+                localStorage.setItem('nipnime_theme', theme);
+                updateThemeVisual(theme);
+            };
+
+            const initTheme = () => {
+                const stored = localStorage.getItem('nipnime_theme');
+                const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const theme = stored || (prefersDark ? 'dark' : 'light');
+                applyTheme(theme);
+            };
+
+            initTheme();
+            if (themeToggle) {
+                themeToggle.addEventListener('click', () => {
+                    const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+                    applyTheme(nextTheme);
+                });
+            }
 
             // Profile dropdown logic
             if (profileButton && profileMenu) {
@@ -355,9 +404,9 @@
         main { animation: fadeInUp 0.5s ease-out; }
         html { scroll-behavior: smooth; }
         ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0f1115; }
-        ::-webkit-scrollbar-thumb { background: #dc2626; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #b91c1c; }
+        ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+        ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
     </style>
 </body>
 </html>
