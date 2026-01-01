@@ -16,9 +16,31 @@ class AdminEpisodeLogResource extends Resource
     protected static ?string $model = AdminEpisodeLog::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
-    protected static ?string $navigationLabel = 'Admin Performance';
-    protected static ?string $navigationGroup = 'Superadmin';
+    protected static ?string $navigationLabel = null;
+    protected static ?string $navigationGroup = null;
     protected static ?int $navigationSort = 1;
+
+    public static function getNavigationLabel(): string
+    {
+        $user = auth()->user();
+
+        if ($user && $user->isSuperAdmin()) {
+            return 'Admin Performance';
+        }
+
+        return 'Pendapatan';
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        $user = auth()->user();
+
+        if ($user && $user->isSuperAdmin()) {
+            return 'Superadmin';
+        }
+
+        return 'Admin';
+    }
 
     public static function shouldRegisterNavigation(): bool
     {
