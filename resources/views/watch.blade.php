@@ -10,25 +10,25 @@
                 @livewire('video-player', ['episode' => $episode])
             </div>
 
-            <div class="bg-[#1a1d24] rounded-xl sm:rounded-2xl p-4 sm:p-8 border border-white/5">
+            <div class="theme-card rounded-xl sm:rounded-2xl p-4 sm:p-8 border theme-border">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
-                    <h1 class="text-xl sm:text-3xl font-black text-white tracking-tight">
+                    <h1 class="text-xl sm:text-3xl font-black tracking-tight">
                         {{ $episode->anime->title }} <span class="text-red-600">- Ep {{ $episode->episode_number }}</span>
                     </h1>
                     <div class="flex gap-2">
-                        <button class="flex-1 sm:flex-none px-4 py-2 bg-[#2a2e38] hover:bg-red-600 text-white text-xs font-bold rounded-lg transition">PREV</button>
-                        <button class="flex-1 sm:flex-none px-4 py-2 bg-[#2a2e38] hover:bg-red-600 text-white text-xs font-bold rounded-lg transition">NEXT</button>
+                        <button class="flex-1 sm:flex-none px-4 py-2 theme-elevated border theme-border hover:bg-white/10 text-xs font-bold rounded-lg transition uppercase tracking-wide">PREV</button>
+                        <button class="flex-1 sm:flex-none px-4 py-2 theme-elevated border theme-border hover:bg-white/10 text-xs font-bold rounded-lg transition uppercase tracking-wide">NEXT</button>
                     </div>
                 </div>
                 <p class="text-gray-400 leading-relaxed italic border-l-4 border-red-600 pl-4 text-sm sm:text-base">{{ $episode->description }}</p>
             </div>
 
             <!-- Comments Section -->
-            <div class="mt-4 sm:mt-8 bg-[#1a1d24] rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-white/5">
+            <div class="mt-4 sm:mt-8 theme-card rounded-xl sm:rounded-2xl p-4 sm:p-6 border theme-border">
                 <div class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
                     <div class="w-1 sm:w-1.5 h-6 sm:h-8 bg-gradient-to-b from-red-600 to-red-700 rounded-full"></div>
                     <div>
-                        <h2 class="text-lg sm:text-2xl font-black text-white uppercase tracking-tight">Komentar</h2>
+                        <h2 class="text-lg sm:text-2xl font-black uppercase tracking-tight">Komentar</h2>
                         <p class="text-gray-400 text-xs sm:text-sm mt-0.5 sm:mt-1">{{ $comments->total() }} komentar</p>
                     </div>
                 </div>
@@ -39,7 +39,7 @@
                         @csrf
                         <input type="hidden" name="anime_id" value="{{ $episode->anime_id }}">
                         <input type="hidden" name="episode_id" value="{{ $episode->id }}">
-                        <textarea name="comment" rows="3" placeholder="Tulis komentar kamu di sini..." class="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/5 border border-white/20 rounded-xl text-white text-sm placeholder-gray-500 focus:border-red-600 focus:ring-2 focus:ring-red-600/50 focus:outline-none transition-all" required maxlength="1000"></textarea>
+                        <textarea name="comment" rows="3" placeholder="Tulis komentar kamu di sini..." class="w-full px-3 sm:px-4 py-2 sm:py-3 theme-input border-2 theme-border rounded-xl text-sm placeholder-gray-500 focus:border-red-600 focus:ring-2 focus:ring-red-600/50 focus:outline-none transition-all" required maxlength="1000"></textarea>
                         <div class="flex items-center justify-between">
                             <p class="text-gray-500 text-xs hidden sm:block">Maksimal 1000 karakter</p>
                             <button type="submit" class="w-full sm:w-auto px-4 sm:px-5 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white text-sm font-bold rounded-lg transition-all">Kirim Komentar</button>
@@ -61,7 +61,7 @@
 
                 <div class="space-y-6">
                     @forelse($comments as $comment)
-                        <div class="bg-[#151822] rounded-xl p-4 border border-white/10">
+                        <div class="theme-elevated rounded-xl p-4 border theme-border">
                             <div class="flex gap-3">
                                 <div class="w-10 h-10 rounded-full bg-gradient-to-br from-red-600 to-red-700 flex items-center justify-center text-white font-black">
                                     {{ strtoupper(substr($comment->user->name, 0, 1)) }}
@@ -92,7 +92,7 @@
                                             <input type="hidden" name="anime_id" value="{{ $episode->anime_id }}">
                                             <input type="hidden" name="episode_id" value="{{ $episode->id }}">
                                             <input type="hidden" name="parent_id" value="{{ $comment->id }}">
-                                            <textarea name="comment" rows="3" placeholder="Tulis balasan..." class="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-gray-500 focus:border-red-600 focus:ring-2 focus:ring-red-600/50 focus:outline-none transition-all" required maxlength="1000"></textarea>
+                                            <textarea name="comment" rows="3" placeholder="Tulis balasan..." class="w-full px-4 py-3 theme-input border-2 theme-border rounded-xl placeholder-gray-500 focus:border-red-600 focus:ring-2 focus:ring-red-600/50 focus:outline-none transition-all" required maxlength="1000"></textarea>
                                             <div class="flex gap-2">
                                                 <button type="submit" class="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold rounded-lg text-xs">Kirim Balasan</button>
                                                 <button type="button" onclick="toggleReplyForm({{ $comment->id }})" class="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white font-semibold rounded-lg text-xs">Batal</button>
@@ -149,12 +149,16 @@
         </div>
 
         <aside class="space-y-6">
-            <div class="bg-[#1a1d24] rounded-2xl p-6 border border-white/5">
-                <h3 class="text-lg font-black text-white mb-4 uppercase tracking-widest italic">Daftar Episode</h3>
+            <div class="theme-card rounded-2xl p-6 border theme-border">
+                <h3 class="text-lg font-black mb-4 uppercase tracking-widest italic">Daftar Episode</h3>
                 <div class="space-y-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                     @foreach($animeEpisodes as $ep)
-                        <a href="{{ route('watch', $ep) }}" 
-                           class="flex items-center gap-4 p-3 rounded-xl transition-all {{ $ep->id === $episode->id ? 'bg-red-600 text-white' : 'bg-[#2a2e38] hover:bg-[#343a46]' }}">
+                        <a href="{{ route('watch', $ep) }}"
+                           @class([
+                               'flex items-center gap-4 p-3 rounded-xl transition-all border',
+                               'bg-red-600 text-white border-red-500/60 shadow-lg shadow-red-600/30' => $ep->id === $episode->id,
+                               'theme-elevated theme-border hover:bg-white/10' => $ep->id !== $episode->id,
+                           ])>
                             <div class="w-10 h-10 flex-shrink-0 bg-black/20 rounded-lg flex items-center justify-center font-bold">
                                 {{ $ep->episode_number }}
                             </div>
@@ -167,11 +171,11 @@
                 </div>
             </div>
             
-            <div class="bg-[#1a1d24] rounded-2xl p-4 border border-white/5">
+            <div class="theme-card rounded-2xl p-4 border theme-border">
                 <img src="{{ $episode->anime->poster_image ? asset('storage/' . $episode->anime->poster_image) : asset('images/placeholder.png') }}" 
                      alt="{{ $episode->anime->title }}"
                      class="w-full h-40 object-cover rounded-xl mb-4 shadow-lg bg-gray-800">
-                <h4 class="text-sm font-black text-white uppercase">{{ $episode->anime->title }}</h4>
+                <h4 class="text-sm font-black uppercase">{{ $episode->anime->title }}</h4>
                 <div class="flex items-center gap-2 mt-2">
                     <span class="text-yellow-500 font-bold">★ {{ number_format($episode->anime->rating, 1) }}</span>
                     <span class="text-xs text-gray-500 italic">{{ $episode->anime->type }}</span>

@@ -1,7 +1,7 @@
 {{-- Video Player Component --}}
 <div class="w-full space-y-4">
     {{-- Video Player Container --}}
-    <div class="bg-black rounded-lg overflow-hidden shadow-2xl aspect-video">
+    <div class="theme-elevated rounded-lg overflow-hidden shadow-2xl aspect-video border theme-border">
         @if($selectedServer)
             @if(str_contains($selectedServer->embed_url, '<iframe'))
                 {{-- Handle Full Iframe Tags --}}
@@ -79,7 +79,7 @@
                 </iframe>
             @else
                 {{-- Handle Error/Invalid URL --}}
-                <div class="w-full h-full flex flex-col items-center justify-center text-gray-500 bg-slate-900 p-6">
+                <div class="w-full h-full flex flex-col items-center justify-center text-gray-500 theme-elevated p-6 border-t border theme-border">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
@@ -89,7 +89,7 @@
             @endif
         @else
             {{-- Placeholder when no server selected --}}
-            <div class="w-full h-full flex items-center justify-center text-gray-400 bg-slate-900">
+            <div class="w-full h-full flex items-center justify-center text-gray-400 theme-elevated">
                 <div class="text-center">
                     <div class="animate-pulse inline-block p-4 bg-slate-800 rounded-full mb-3">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -104,7 +104,7 @@
 
     {{-- Server List --}}
     @if(count($episode->videoServers) > 0)
-        <div class="bg-slate-800 rounded-lg p-3 sm:p-4">
+        <div class="theme-card rounded-lg p-3 sm:p-4 border theme-border">
             <div class="flex items-center gap-2 mb-2 sm:mb-3">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12l4-4m-4 4l4 4" />
@@ -115,12 +115,11 @@
                 @foreach($episode->videoServers as $server)
                     <button
                         wire:click="selectServer({{ $server->id }})"
-                        class="px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wide transition-all duration-200 truncate
-                        @if($selectedServerId === $server->id)
-                            bg-red-600 hover:bg-red-700 text-white ring-2 ring-red-500
-                        @else
-                            bg-slate-700 hover:bg-slate-600 text-gray-300 border border-slate-600
-                        @endif"
+                        @class([
+                            'px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wide transition-all duration-200 truncate',
+                            'bg-red-600 hover:bg-red-700 text-white ring-2 ring-red-500' => $selectedServerId === $server->id,
+                            'theme-elevated border theme-border hover:bg-white/10 text-gray-500' => $selectedServerId !== $server->id,
+                        ])
                     >
                         {{ $server->server_name }}
                     </button>
