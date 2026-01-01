@@ -74,7 +74,9 @@
                                 @php
                                     $anime = $history->anime;
                                     $episode = $history->episode;
-                                    $progressPercent = $history->progress > 0 ? min(100, ($history->progress / 1440) * 100) : 0; // Assuming 24 min episodes
+                                    // Calculate progress percentage accurately using duration
+                                    $duration = $history->duration ?? 1440; // Default to 24 minutes if not set
+                                    $progressPercent = $history->progress > 0 ? min(100, ($history->progress / $duration) * 100) : 0;
                                 @endphp
                                 <a href="{{ route('watch', $episode) }}" class="group block">
                                     <div class="relative bg-[#1a1d24] rounded-2xl overflow-hidden border border-white/10 group-hover:border-purple-600/50 transition-all duration-300 shadow-lg">

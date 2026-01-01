@@ -265,7 +265,8 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             body: JSON.stringify({
                 progress: seconds,
-                completed: completed
+                completed: completed,
+                duration: videoElement ? Math.floor(videoElement.duration) : 1440
             })
         }).catch(error => console.log('Progress save failed:', error));
     }

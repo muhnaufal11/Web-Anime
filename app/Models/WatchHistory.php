@@ -16,6 +16,7 @@ class WatchHistory extends Model
         'anime_id',
         'episode_id',
         'progress',
+        'duration',
         'completed',
         'last_watched_at',
     ];

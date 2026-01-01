@@ -69,6 +69,7 @@ class WatchController extends Controller
 
         $progress = request('progress', 0);
         $completed = request('completed', false);
+        $duration = request('duration', 1440); // Default 24 minutes in seconds
 
         WatchHistory::updateOrCreate(
             [
@@ -78,6 +79,7 @@ class WatchController extends Controller
             [
                 'anime_id' => $episode->anime_id,
                 'progress' => $progress,
+                'duration' => $duration,
                 'completed' => $completed,
                 'last_watched_at' => now(),
             ]
