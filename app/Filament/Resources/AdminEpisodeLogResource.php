@@ -236,6 +236,26 @@ class AdminEpisodeLogResource extends Resource
                     ->icon('heroicon-o-currency-dollar')
                     ->color('success')
                     ->requiresConfirmation()
+                    ->form([
+                        Forms\Components\Placeholder::make('amount_display')
+                            ->label('Nominal')
+                            ->content(fn (AdminEpisodeLog $record) => 'IDR ' . number_format($record->amount, 0, ',', '.')),
+                        Forms\Components\Placeholder::make('payout_method')
+                            ->label('Metode')
+                            ->content(fn (AdminEpisodeLog $record) => $record->user->payout_method ?? '-'),
+                        Forms\Components\Placeholder::make('bank_name')
+                            ->label('Bank/Provider')
+                            ->content(fn (AdminEpisodeLog $record) => $record->user->bank_name ?? $record->user->payout_wallet_provider ?? '-'),
+                        Forms\Components\Placeholder::make('bank_account_number')
+                            ->label('No. Rekening / Wallet')
+                            ->content(fn (AdminEpisodeLog $record) => $record->user->bank_account_number ?? $record->user->payout_wallet_number ?? '-'),
+                        Forms\Components\Placeholder::make('bank_account_holder')
+                            ->label('Atas Nama')
+                            ->content(fn (AdminEpisodeLog $record) => $record->user->bank_account_holder ?? '-'),
+                        Forms\Components\Placeholder::make('payout_notes')
+                            ->label('Catatan')
+                            ->content(fn (AdminEpisodeLog $record) => $record->user->payout_notes ?? '-'),
+                    ])
                     ->visible(fn (AdminEpisodeLog $record) => (auth()->user()?->isSuperAdmin() ?? false) && $record->status !== AdminEpisodeLog::STATUS_PAID)
                     ->action(fn (AdminEpisodeLog $record) => $record->update(['status' => AdminEpisodeLog::STATUS_PAID])),
                 Tables\Actions\EditAction::make()
@@ -249,6 +269,25 @@ class AdminEpisodeLogResource extends Resource
                     ->icon('heroicon-o-currency-dollar')
                     ->color('success')
                     ->requiresConfirmation()
+                    ->modalHeading(fn ($records) => 'Tandai Dibayar (' . $records->count() . ' log)')
+                    ->modalSubheading(fn ($records) => 'Total IDR ' . number_format($records->sum('amount'), 0, ',', '.'))
+                    ->form([
+                        Forms\Components\Placeholder::make('payout_method')
+                            ->label('Metode')
+                            ->content(fn () => auth()->user()?->payout_method ?? '-'),
+                        Forms\Components\Placeholder::make('bank_name')
+                            ->label('Bank/Provider')
+                            ->content(fn () => auth()->user()?->bank_name ?? auth()->user()?->payout_wallet_provider ?? '-'),
+                        Forms\Components\Placeholder::make('bank_account_number')
+                            ->label('No. Rekening / Wallet')
+                            ->content(fn () => auth()->user()?->bank_account_number ?? auth()->user()?->payout_wallet_number ?? '-'),
+                        Forms\Components\Placeholder::make('bank_account_holder')
+                            ->label('Atas Nama')
+                            ->content(fn () => auth()->user()?->bank_account_holder ?? '-'),
+                        Forms\Components\Placeholder::make('payout_notes')
+                            ->label('Catatan')
+                            ->content(fn () => auth()->user()?->payout_notes ?? '-'),
+                    ])
                     ->visible(fn () => auth()->user()?->isSuperAdmin() ?? false)
                     ->action(fn ($records) => $records->each->update(['status' => AdminEpisodeLog::STATUS_PAID])),
                 Tables\Actions\DeleteBulkAction::make()
