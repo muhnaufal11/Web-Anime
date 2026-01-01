@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title') - nipnime</title>
+    
     <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
     <link rel="apple-touch-icon" href="{{ asset('images/logo.png') }}">
 
@@ -30,15 +31,17 @@
     <nav class="theme-surface backdrop-blur-xl border-b theme-border sticky top-0 z-50 shadow-xl shadow-black/20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16 sm:h-20">
-                <div class="flex items-center gap-4 lg:gap-10">
-                    <a href="{{ route('home') }}" class="group flex items-center gap-2 sm:gap-3 hover:scale-105 transition-transform">
+                
+                <div class="flex items-center gap-4 lg:gap-12">
+                    
+                    <a href="{{ route('home') }}" class="group flex items-center gap-2 transition-transform hover:scale-105">
                         <img src="{{ asset('images/logo.png') }}" 
                              alt="NipNime Logo" 
-                             class="w-auto h-10 sm:h-12 object-contain drop-shadow-[0_0_15px_rgba(220,38,38,0.6)] transition-all duration-300 group-hover:drop-shadow-[0_0_20px_rgba(220,38,38,0.9)]">
-                        <span class="text-xl sm:text-3xl font-black text-white tracking-tighter font-['Montserrat'] uppercase hidden sm:block"><span class="text-red-600">nip</span>nime</span>
-                    </a>
+                             class="h-10 sm:h-14 w-auto object-contain drop-shadow-[0_0_15px_rgba(220,38,38,0.6)] transition-all duration-300 group-hover:drop-shadow-[0_0_20px_rgba(220,38,38,0.9)]">
+                        
+                        </a>
                     
-                    <div class="hidden lg:flex items-center space-x-1 text-sm font-bold uppercase tracking-widest">
+                    <div class="hidden lg:flex items-center space-x-2 text-sm font-bold uppercase tracking-widest">
                         <a href="{{ route('home') }}" class="px-4 py-2 rounded-lg hover:bg-white/10 hover:text-red-500 transition {{ request()->routeIs('home') ? 'text-red-500 bg-white/10' : '' }}">
                             🏠 Home
                         </a>
@@ -60,9 +63,10 @@
                 </div>
 
                 <div class="flex items-center gap-2 sm:gap-4 lg:gap-6">
+                    
                     <form action="{{ route('search') }}" method="GET" class="hidden lg:block relative group">
                         <input type="text" name="search" placeholder="Cari anime..." 
-                               class="w-72 theme-input border-2 theme-border rounded-full px-5 py-2.5 text-sm focus:border-red-600 focus:ring-2 focus:ring-red-600/30 transition-all placeholder-gray-600 focus:placeholder-gray-500">
+                               class="w-64 xl:w-72 theme-input border-2 theme-border rounded-full px-5 py-2.5 text-sm focus:border-red-600 focus:ring-2 focus:ring-red-600/30 transition-all placeholder-gray-600 focus:placeholder-gray-500">
                         <button type="submit" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-red-500 transition">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -100,9 +104,7 @@
                                         <div class="p-3 border-b border-white/10 flex items-center gap-3">
                                             <div class="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-red-600 to-red-700 flex items-center justify-center text-white font-black flex-shrink-0">
                                                 @if(Auth::user()->avatar)
-                                                    <img src="{{ asset('storage/' . Auth::user()->avatar) }}" 
-                                                         alt="{{ Auth::user()->name }}"
-                                                         class="w-full h-full object-cover">
+                                                    <img src="{{ asset('storage/' . Auth::user()->avatar) }}" alt="{{ Auth::user()->name }}" class="w-full h-full object-cover">
                                                 @else
                                                     {{ substr(Auth::user()->name, 0, 1) }}
                                                 @endif
@@ -167,34 +169,29 @@
 
         <div id="mobileMenu" class="absolute top-full left-0 w-full theme-surface border-t theme-border shadow-2xl z-40 transition-all duration-500 ease-in-out max-h-0 opacity-0 overflow-hidden pointer-events-none lg:hidden">
             <div class="px-4 py-4 space-y-2">
-                
                 <a href="{{ route('home') }}" style="transition-delay: 0ms;" 
                    class="mobile-item block px-4 py-3 rounded-xl text-sm font-bold uppercase tracking-wider transition-all duration-500 opacity-0 -translate-y-4 {{ request()->routeIs('home') ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-white/10' }}">
                     🏠 Home
                 </a>
-                
                 <a href="{{ route('search') }}" style="transition-delay: 100ms;"
                    class="mobile-item block px-4 py-3 rounded-xl text-sm font-bold uppercase tracking-wider transition-all duration-500 opacity-0 -translate-y-4 {{ request()->routeIs('search') && request('type') !== 'Movie' ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-white/10' }}">
                     📺 Daftar Anime
                 </a>
-                
                 <a href="{{ route('schedule') }}" style="transition-delay: 200ms;"
                    class="mobile-item block px-4 py-3 rounded-xl text-sm font-bold uppercase tracking-wider transition-all duration-500 opacity-0 -translate-y-4 {{ request()->routeIs('schedule') ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-white/10' }}">
                     📅 Jadwal
                 </a>
-                
                 <a href="{{ route('search', ['type' => 'Movie']) }}" style="transition-delay: 300ms;"
                    class="mobile-item block px-4 py-3 rounded-xl text-sm font-bold uppercase tracking-wider transition-all duration-500 opacity-0 -translate-y-4 {{ request()->routeIs('search') && request('type') === 'Movie' ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-white/10' }}">
                     🎬 Movie
                 </a>
-                
                 @auth
                 <a href="{{ route('request.index') }}" style="transition-delay: 400ms;"
                    class="mobile-item block px-4 py-3 rounded-xl text-sm font-bold uppercase tracking-wider transition-all duration-500 opacity-0 -translate-y-4 {{ request()->routeIs('request.*') ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-white/10' }}">
                     📝 Request
                 </a>
                 @endauth
-
+                
                 @if(isset($holidaySettings) && (($holidaySettings['christmas'] ?? false) || ($holidaySettings['new_year'] ?? false)))
                 <div style="transition-delay: 500ms;" class="mobile-item pt-4 border-t border-white/10 mt-2 transition-all duration-500 opacity-0 -translate-y-4">
                     <div class="flex items-center justify-between px-4 py-2 bg-white/5 rounded-xl">
