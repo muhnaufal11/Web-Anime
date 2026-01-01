@@ -23,12 +23,18 @@ class AppServiceProvider extends ServiceProvider
      * @return void
      */
     public function boot()
-{
-    view()->composer('*', function ($view) {
-        $view->with('holidaySettings', [
-            'christmas' => \App\Models\SiteSetting::where('key', 'christmas_mode')->first()?->value == '1',
-            'new_year' => \App\Models\SiteSetting::where('key', 'new_year_mode')->first()?->value == '1',
-        ]);
-    });
-}
+    {
+        // 1. INI LOGIKA BARU: Paksa HTTPS jika di Production
+        if($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
+
+        // 2. INI LOGIKA LAMA KAMU (Holiday Settings) - Jangan dihapus
+        view()->composer('*', function ($view) {
+            $view->with('holidaySettings', [
+                'christmas' => \App\Models\SiteSetting::where('key', 'christmas_mode')->first()?->value == '1',
+                'new_year' => \App\Models\SiteSetting::where('key', 'new_year_mode')->first()?->value == '1',
+            ]);
+        });
+    }
 }
