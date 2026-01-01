@@ -271,23 +271,35 @@ class AdminEpisodeLogResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading(fn ($records) => 'Tandai Dibayar (' . $records->count() . ' log)')
                     ->modalSubheading(fn ($records) => 'Total IDR ' . number_format($records->sum('amount'), 0, ',', '.'))
-                    ->form([
-                        Forms\Components\Placeholder::make('payout_method')
-                            ->label('Metode')
-                            ->content(fn () => auth()->user()?->payout_method ?? '-'),
-                        Forms\Components\Placeholder::make('bank_name')
-                            ->label('Bank/Provider')
-                            ->content(fn () => auth()->user()?->bank_name ?? auth()->user()?->payout_wallet_provider ?? '-'),
-                        Forms\Components\Placeholder::make('bank_account_number')
-                            ->label('No. Rekening / Wallet')
-                            ->content(fn () => auth()->user()?->bank_account_number ?? auth()->user()?->payout_wallet_number ?? '-'),
-                        Forms\Components\Placeholder::make('bank_account_holder')
-                            ->label('Atas Nama')
-                            ->content(fn () => auth()->user()?->bank_account_holder ?? '-'),
-                        Forms\Components\Placeholder::make('payout_notes')
-                            ->label('Catatan')
-                            ->content(fn () => auth()->user()?->payout_notes ?? '-'),
-                    ])
+                    ->form(function ($records) {
+                        $methods = $records->pluck('user.payout_method')->filter()->unique()->values();
+                        $banks = $records->map(fn ($r) => $r->user->bank_name ?? $r->user->payout_wallet_provider)->filter()->unique()->values();
+                        $numbers = $records->map(fn ($r) => $r->user->bank_account_number ?? $r->user->payout_wallet_number)->filter()->unique()->values();
+                        $holders = $records->pluck('user.bank_account_holder')->filter()->unique()->values();
+                        $notes = $records->pluck('user.payout_notes')->filter()->unique()->values();
+
+                        $list = function ($col) {
+                            return $col->isEmpty() ? '-' : $col->join(', ');
+                        };
+
+                        return [
+                            Forms\Components\Placeholder::make('payout_method')
+                                ->label('Metode')
+                                ->content(fn () => $list($methods)),
+                            Forms\Components\Placeholder::make('bank_name')
+                                ->label('Bank/Provider')
+                                ->content(fn () => $list($banks)),
+                            Forms\Components\Placeholder::make('bank_account_number')
+                                ->label('No. Rekening / Wallet')
+                                ->content(fn () => $list($numbers)),
+                            Forms\Components\Placeholder::make('bank_account_holder')
+                                ->label('Atas Nama')
+                                ->content(fn () => $list($holders)),
+                            Forms\Components\Placeholder::make('payout_notes')
+                                ->label('Catatan')
+                                ->content(fn () => $list($notes)),
+                        ];
+                    })
                     ->visible(fn () => auth()->user()?->isSuperAdmin() ?? false)
                     ->action(fn ($records) => $records->each->update(['status' => AdminEpisodeLog::STATUS_PAID])),
                 Tables\Actions\DeleteBulkAction::make()
