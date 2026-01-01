@@ -40,13 +40,13 @@
                         <a href="{{ route('home') }}" class="px-4 py-2 rounded-lg hover:bg-white/10 hover:text-red-500 transition {{ request()->routeIs('home') ? 'text-red-500 bg-white/10' : '' }}">
                             🏠 Home
                         </a>
-                        <a href="{{ route('search') }}" class="px-4 py-2 rounded-lg hover:bg-white/10 hover:text-red-500 transition {{ request()->routeIs('search') ? 'text-red-500 bg-white/10' : '' }}">
+                        <a href="{{ route('search') }}" class="px-4 py-2 rounded-lg hover:bg-white/10 hover:text-red-500 transition {{ request()->routeIs('search') && request('type') !== 'Movie' ? 'text-red-500 bg-white/10' : '' }}">
                             📺 Daftar Anime
                         </a>
                         <a href="{{ route('schedule') }}" class="px-4 py-2 rounded-lg hover:bg-white/10 hover:text-red-500 transition {{ request()->routeIs('schedule') ? 'text-red-500 bg-white/10' : '' }}">
                             📅 Jadwal
                         </a>
-                        <a href="{{ route('search', ['type' => 'Movie']) }}" class="px-4 py-2 rounded-lg hover:bg-white/10 hover:text-red-500 transition">
+                        <a href="{{ route('search', ['type' => 'Movie']) }}" class="px-4 py-2 rounded-lg hover:bg-white/10 hover:text-red-500 transition {{ request()->routeIs('search') && request('type') === 'Movie' ? 'text-red-500 bg-white/10' : '' }}">
                             🎬 Movie
                         </a>
                         @auth
@@ -169,18 +169,18 @@
                     🏠 Home
                 </a>
                 
-                <a href="{{ route('search') }}" style="transition-delay: 100ms;"
-                   class="mobile-item block px-4 py-3 rounded-xl text-sm font-bold uppercase tracking-wider transition-all duration-500 opacity-0 -translate-y-4 {{ request()->routeIs('search') ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-white/10' }}">
+                     <a href="{{ route('search') }}" style="transition-delay: 100ms;"
+                         class="mobile-item block px-4 py-3 rounded-xl text-sm font-bold uppercase tracking-wider transition-all duration-500 opacity-0 -translate-y-4 {{ request()->routeIs('search') && request('type') !== 'Movie' ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-white/10' }}">
                     📺 Daftar Anime
                 </a>
                 
-                <a href="{{ route('schedule') }}" style="transition-delay: 200ms;"
-                   class="mobile-item block px-4 py-3 rounded-xl text-sm font-bold uppercase tracking-wider transition-all duration-500 opacity-0 -translate-y-4 {{ request()->routeIs('schedule') ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-white/10' }}">
+                     <a href="{{ route('schedule') }}" style="transition-delay: 200ms;"
+                         class="mobile-item block px-4 py-3 rounded-xl text-sm font-bold uppercase tracking-wider transition-all duration-500 opacity-0 -translate-y-4 {{ request()->routeIs('schedule') ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-white/10' }}">
                     📅 Jadwal
                 </a>
                 
-                <a href="{{ route('search', ['type' => 'Movie']) }}" style="transition-delay: 300ms;"
-                   class="mobile-item block px-4 py-3 rounded-xl text-sm font-bold uppercase tracking-wider transition-all duration-500 opacity-0 -translate-y-4 text-gray-300 hover:bg-white/10">
+                     <a href="{{ route('search', ['type' => 'Movie']) }}" style="transition-delay: 300ms;"
+                         class="mobile-item block px-4 py-3 rounded-xl text-sm font-bold uppercase tracking-wider transition-all duration-500 opacity-0 -translate-y-4 {{ request()->routeIs('search') && request('type') === 'Movie' ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-white/10' }}">
                     🎬 Movie
                 </a>
                 
@@ -225,9 +225,9 @@
                     <h4 class="text-white font-black uppercase tracking-wider mb-3 sm:mb-4 text-sm sm:text-base">Navigasi</h4>
                     <ul class="space-y-1.5 sm:space-y-2 text-gray-400 text-xs sm:text-sm">
                         <li><a href="{{ route('home') }}" class="hover:text-red-500 transition">Home</a></li>
-                        <li><a href="{{ route('search') }}" class="hover:text-red-500 transition">Daftar Anime</a></li>
-                        <li><a href="{{ route('schedule') }}" class="hover:text-red-500 transition">Jadwal Tayang</a></li>
-                        <li><a href="{{ route('search', ['type' => 'Movie']) }}" class="hover:text-red-500 transition">Movie</a></li>
+                        <li><a href="{{ route('search') }}" class="hover:text-red-500 transition {{ request()->routeIs('search') && request('type') !== 'Movie' ? 'text-red-500' : '' }}">Daftar Anime</a></li>
+                        <li><a href="{{ route('schedule') }}" class="hover:text-red-500 transition {{ request()->routeIs('schedule') ? 'text-red-500' : '' }}">Jadwal Tayang</a></li>
+                        <li><a href="{{ route('search', ['type' => 'Movie']) }}" class="hover:text-red-500 transition {{ request()->routeIs('search') && request('type') === 'Movie' ? 'text-red-500' : '' }}">Movie</a></li>
                     </ul>
                 </div>
 
