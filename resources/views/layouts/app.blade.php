@@ -30,15 +30,12 @@
     <nav class="theme-surface backdrop-blur-xl border-b theme-border sticky top-0 z-50 shadow-xl shadow-black/20 transition-all duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16 sm:h-20">
-                <!-- Left Side -->
                 <div class="flex items-center gap-4 lg:gap-8">
-                    <!-- Logo -->
                     <a href="{{ route('home') }}" class="flex items-center gap-2 group flex-shrink-0">
                         <img src="{{ asset('images/logo.png') }}" alt="nipnime Logo" class="w-auto h-8 sm:h-10 object-contain drop-shadow-[0_0_10px_rgba(220,38,38,0.5)] group-hover:drop-shadow-[0_0_15px_rgba(220,38,38,0.8)] transition-all">
                         <span class="text-xl sm:text-2xl font-black text-white tracking-tighter font-['Montserrat'] uppercase hidden sm:block"><span class="text-red-600">nip</span>nime</span>
                     </a>
 
-                    <!-- Desktop Menu -->
                     <div class="hidden lg:flex items-center gap-1 xl:gap-2">
                         <a href="{{ route('home') }}" class="px-3 py-2 rounded-lg text-sm font-bold uppercase tracking-wider hover:bg-white/10 hover:text-red-500 transition {{ request()->routeIs('home') ? 'text-red-500 bg-white/10' : 'text-gray-300' }}">
                             🏠 Home
@@ -60,9 +57,7 @@
                     </div>
                 </div>
 
-                <!-- Right Side -->
                 <div class="flex items-center gap-2 sm:gap-4">
-                    <!-- Search Bar (Desktop) -->
                     <form action="{{ route('search') }}" method="GET" class="hidden lg:block relative group w-48 xl:w-64 transition-all duration-300 focus-within:w-64 xl:focus-within:w-80">
                         <input type="text" name="search" placeholder="Cari anime..." 
                                class="w-full theme-input border-2 theme-border rounded-full px-4 py-2 text-sm focus:border-red-600 focus:ring-2 focus:ring-red-600/30 transition-all placeholder-gray-500">
@@ -73,19 +68,16 @@
                         </button>
                     </form>
 
-                    <!-- Mobile Search Button -->
                     <button id="mobileSearchBtn" class="lg:hidden p-2 text-gray-400 hover:text-white transition rounded-lg hover:bg-white/10">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                         </svg>
                     </button>
 
-                    <!-- Theme Toggle -->
                     <button id="themeToggle" class="p-2 text-gray-400 hover:text-white transition rounded-lg hover:bg-white/10" aria-label="Toggle tema">
                         <span id="themeToggleIcon" class="text-xl">🌙</span>
                     </button>
 
-                    <!-- Auth Section -->
                     @auth
                         <div class="relative" id="profileDropdown">
                             <button id="profileButton" class="flex items-center gap-2 focus:outline-none">
@@ -99,7 +91,6 @@
                                     @endif
                                 </div>
                             </button>
-                            <!-- Dropdown Menu -->
                             <div id="profileMenu" class="absolute right-0 mt-2 w-56 theme-card rounded-xl shadow-xl opacity-0 invisible transform scale-95 transition-all duration-200 border theme-border z-50 origin-top-right">
                                 <div class="p-4 border-b border-white/10">
                                     <p class="text-sm font-bold text-white truncate">{{ Auth::user()->name }}</p>
@@ -129,7 +120,6 @@
                         </div>
                     @endauth
 
-                    <!-- Mobile Menu Button -->
                     <button id="mobileMenuBtn" class="lg:hidden p-2 text-gray-400 hover:text-white transition rounded-lg hover:bg-white/10">
                         <svg id="burgerIcon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
@@ -139,8 +129,7 @@
             </div>
         </div>
 
-        <!-- Mobile Search Bar -->
-        <div id="mobileSearchBar" class="hidden lg:hidden border-t theme-border theme-surface p-4 animate-fadeInDown">
+        <div id="mobileSearchBar" class="hidden lg:hidden absolute top-full left-0 w-full border-t theme-border theme-surface p-4 shadow-xl z-40 animate-fadeInDown">
             <form action="{{ route('search') }}" method="GET" class="relative">
                 <input type="text" name="search" placeholder="Cari anime..." 
                        class="w-full theme-input border-2 theme-border rounded-lg px-4 py-3 text-sm focus:border-red-600 focus:ring-2 focus:ring-red-600/30 transition-all placeholder-gray-500">
@@ -152,8 +141,7 @@
             </form>
         </div>
 
-        <!-- Mobile Menu -->
-        <div id="mobileMenu" class="hidden lg:hidden border-t theme-border theme-surface">
+        <div id="mobileMenu" class="hidden lg:hidden absolute top-full left-0 w-full border-t theme-border theme-surface shadow-xl z-40 max-h-[85vh] overflow-y-auto">
             <div class="flex flex-col p-4 space-y-2">
                 <a href="{{ route('home') }}" class="px-4 py-3 rounded-lg text-sm font-bold uppercase tracking-wider {{ request()->routeIs('home') ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-white/10' }}">
                     🏠 Home
