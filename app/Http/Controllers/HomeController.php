@@ -159,4 +159,50 @@ class HomeController extends Controller
             'availableYears' => $availableYears,
         ]);
     }
+
+    /**
+     * Display all latest episodes with pagination
+     */
+    public function latestEpisodes()
+    {
+        // Get latest episode per anime with their latest video server update time
+        $latestEpisodesData = \DB::table('episodes')
+            ->join('animes', 'episodes.anime_id', '=', 'animes.id')
+            ->join('video_servers', 'episodes.id', '=', 'video_servers.episode_id')
+            ->where('video_servers.is_active', true)
+            ->select(
+                'episodes.id as episode_id',
+                'animes.id as anime_id',
+                'episodes.episode_number',
+                \DB::raw('MAX(video_servers.updated_at) as latest_server_update')
+            )
+            ->groupBy('episodes.id', 'animes.id', 'episodes.episode_number')
+            ->orderBy('latest_server_update', 'desc')
+            ->paginate(24);
+
+        // Get episode IDs in order
+        $episodeIds = $latestEpisodesData->pluck('episode_id');
+        $episodeOrder = array_flip($episodeIds->toArray());
+
+        // Load episodes with their anime
+        $episodes = Episode::whereIn('id', $episodeIds)
+            ->with(['anime.genres', 'videoServers' => fn($q) => $q->where('is_active', true)])
+            ->get()
+            ->sort(function($a, $b) use ($episodeOrder) {
+                return ($episodeOrder[$a->id] ?? 999) <=> ($episodeOrder[$b->id] ?? 999);
+            })
+            ->values();
+
+        // Create anime objects for each episode (for display purposes)
+        $latestEpisodes = $episodes->map(function($episode) {
+            $anime = clone $episode->anime;
+            $anime->setRelation('episodes', collect([$episode]));
+            return $anime;
+        });
+
+        return view('latest-episodes', [
+            'latestEpisodes' => $latestEpisodes,
+            'pagination' => $latestEpisodesData,
+        ]);
+    }
 }

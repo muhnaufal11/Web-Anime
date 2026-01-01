@@ -61,12 +61,17 @@
                     @if(isset($continueWatching) && $continueWatching->count() > 0)
                     <!-- Continue Watching Section -->
                     <div class="mb-10 sm:mb-16">
-                        <div class="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-                            <div class="w-1 sm:w-1.5 h-8 sm:h-10 bg-gradient-to-b from-purple-600 to-purple-700 rounded-full"></div>
-                            <div>
-                                <h2 class="text-2xl sm:text-4xl font-black text-white uppercase tracking-tight">Lanjutkan Tonton</h2>
-                                <p class="text-gray-400 text-xs sm:text-sm mt-1">Melanjutkan dari terakhir kali kamu nonton</p>
+                        <div class="flex items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+                            <div class="flex items-center gap-3 sm:gap-4">
+                                <div class="w-1 sm:w-1.5 h-8 sm:h-10 bg-gradient-to-b from-purple-600 to-purple-700 rounded-full"></div>
+                                <div>
+                                    <h2 class="text-2xl sm:text-4xl font-black text-white uppercase tracking-tight">Lanjutkan Tonton</h2>
+                                    <p class="text-gray-400 text-xs sm:text-sm mt-1">Melanjutkan dari terakhir kali kamu nonton</p>
+                                </div>
                             </div>
+                            <a href="{{ route('watch-history') }}" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs sm:text-sm font-bold rounded-lg transition-colors whitespace-nowrap">
+                                Lihat Semua →
+                            </a>
                         </div>
 
                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6">
@@ -137,12 +142,17 @@
 
                 <!-- Section Header -->
                 <div class="mb-10">
-                    <div class="flex items-center gap-4 mb-4">
-                        <div class="w-1.5 h-10 bg-gradient-to-b from-red-600 to-red-700 rounded-full"></div>
-                        <div>
-                            <h2 class="text-4xl font-black text-white uppercase tracking-tight">Episode Terbaru</h2>
-                            <p class="text-gray-400 text-sm mt-1">Koleksi episode terbaru dari anime favoritmu</p>
+                    <div class="flex items-center justify-between gap-4 mb-4">
+                        <div class="flex items-center gap-4">
+                            <div class="w-1.5 h-10 bg-gradient-to-b from-red-600 to-red-700 rounded-full"></div>
+                            <div>
+                                <h2 class="text-4xl font-black text-white uppercase tracking-tight">Episode Terbaru</h2>
+                                <p class="text-gray-400 text-sm mt-1">Koleksi episode terbaru dari anime favoritmu</p>
+                            </div>
                         </div>
+                        <a href="{{ route('latest-episodes') }}" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-lg transition-colors whitespace-nowrap">
+                            Lihat Semua →
+                        </a>
                     </div>
                 </div>
 

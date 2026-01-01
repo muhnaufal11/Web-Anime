@@ -26,6 +26,7 @@ use App\Http\Controllers\PageController;
 // Public Routes (No Auth Required)
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/search', [HomeController::class, 'search'])->name('search');
+Route::get('/latest-episodes', [HomeController::class, 'latestEpisodes'])->name('latest-episodes');
 Route::get('/schedule', [ScheduleController::class, 'index'])->name('schedule');
 Route::get('/anime/{anime:slug}', [DetailController::class, 'show'])->name('detail');
 Route::get('/watch/{episode:slug}', [WatchController::class, 'show'])->name('watch');
@@ -72,6 +73,9 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
     
     // Watch Progress
     Route::post('/watch/{episode:slug}/progress', [WatchController::class, 'updateProgress'])->name('watch.progress');
+    
+    // History Routes
+    Route::get('/watch-history', [WatchController::class, 'history'])->name('watch-history');
     
     // Anime Request Routes
     Route::get('/request', [AnimeRequestController::class, 'index'])->name('request.index');

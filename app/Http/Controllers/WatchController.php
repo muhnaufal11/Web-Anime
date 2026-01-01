@@ -87,4 +87,23 @@ class WatchController extends Controller
 
         return response()->json(['success' => true]);
     }
+
+    /**
+     * Display full watch history with pagination
+     */
+    public function history()
+    {
+        if (!auth()->check()) {
+            return redirect()->route('auth.login');
+        }
+
+        $watchHistory = WatchHistory::where('user_id', auth()->id())
+            ->with(['episode.anime.genres', 'anime.genres'])
+            ->orderBy('last_watched_at', 'desc')
+            ->paginate(24);
+
+        return view('watch-history', [
+            'watchHistory' => $watchHistory,
+        ]);
+    }
 }
