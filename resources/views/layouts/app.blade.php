@@ -30,13 +30,13 @@
     <nav class="theme-surface backdrop-blur-xl border-b theme-border sticky top-0 z-50 shadow-xl shadow-black/20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16 sm:h-20">
-                <div class="flex items-center gap-4 lg:gap-10">
-                    <a href="{{ route('home') }}" class="group flex items-center gap-2 sm:gap-3 hover:scale-105 transition-transform">
+                <div class="flex items-center gap-3 sm:gap-4 lg:gap-8 xl:gap-10">
+                    <a href="{{ route('home') }}" class="group flex items-center gap-2 sm:gap-3 hover:scale-105 transition-transform flex-shrink-0">
                         <img src="{{ asset('images/logo.png') }}" alt="nipnime Logo" class="w-auto h-10 sm:h-12 object-contain drop-shadow-[0_0_10px_rgba(220,38,38,0.5)] group-hover:drop-shadow-[0_0_15px_rgba(220,38,38,0.8)] transition-all">
                         <span class="text-xl sm:text-3xl font-black text-white tracking-tighter font-['Montserrat'] uppercase"><span class="text-red-600">nip</span>nime</span>
                     </a>
                     
-                    <div class="hidden lg:flex items-center space-x-1 text-sm font-bold uppercase tracking-widest">
+                    <div class="hidden lg:flex items-center space-x-3 xl:space-x-4 text-sm font-bold uppercase tracking-widest lg:ml-2 xl:ml-4">
                         <a href="{{ route('home') }}" class="px-4 py-2 rounded-lg hover:bg-white/10 hover:text-red-500 transition {{ request()->routeIs('home') ? 'text-red-500 bg-white/10' : '' }}">
                             🏠 Home
                         </a>
