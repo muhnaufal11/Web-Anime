@@ -40,6 +40,10 @@ class User extends Authenticatable implements FilamentUser
         'bank_name',
         'bank_account_number',
         'bank_account_holder',
+        'payout_method',
+        'payout_wallet_provider',
+        'payout_wallet_number',
+        'payout_notes',
     ];
 
     protected $attributes = [

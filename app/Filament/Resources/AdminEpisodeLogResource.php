@@ -138,6 +138,18 @@ class AdminEpisodeLogResource extends Resource
                     ->label('No. Rekening')
                     ->visible(fn () => auth()->user()?->isSuperAdmin())
                     ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('user.payout_method')
+                    ->label('Metode Bayar')
+                    ->visible(fn () => auth()->user()?->isSuperAdmin())
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('user.payout_wallet_provider')
+                    ->label('Provider/Bank')
+                    ->visible(fn () => auth()->user()?->isSuperAdmin())
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('user.payout_wallet_number')
+                    ->label('Akun/No')
+                    ->visible(fn () => auth()->user()?->isSuperAdmin())
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
