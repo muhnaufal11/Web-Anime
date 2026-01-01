@@ -190,27 +190,27 @@ class AdminEpisodeLogResource extends Resource
                 Tables\Columns\TextColumn::make('user.bank_account_holder')
                     ->label('Atas Nama')
                     ->visible(fn () => auth()->user()?->isSuperAdmin())
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('user.bank_name')
                     ->label('Bank')
                     ->visible(fn () => auth()->user()?->isSuperAdmin())
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('user.bank_account_number')
                     ->label('No. Rekening')
                     ->visible(fn () => auth()->user()?->isSuperAdmin())
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('user.payout_method')
                     ->label('Metode Bayar')
                     ->visible(fn () => auth()->user()?->isSuperAdmin())
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('user.payout_wallet_provider')
                     ->label('Provider/Bank')
                     ->visible(fn () => auth()->user()?->isSuperAdmin())
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('user.payout_wallet_number')
                     ->label('Akun/No')
                     ->visible(fn () => auth()->user()?->isSuperAdmin())
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
