@@ -145,6 +145,21 @@ class EpisodeResource extends Resource
                             if ($vs->wasRecentlyCreated) { $created++; } else { $updated++; }
                         }
 
+                        // --- AUTO CREATE ADMIN LOG (ONCE PER EPISODE) ---
+                        $user = auth()->user();
+                        if ($user && $user->isAdmin() && !$user->isSuperAdmin()) {
+                            \App\Models\AdminEpisodeLog::firstOrCreate(
+                                [
+                                    'user_id' => $user->id,
+                                    'episode_id' => $record->id,
+                                ],
+                                [
+                                    'amount' => \App\Models\AdminEpisodeLog::DEFAULT_AMOUNT,
+                                    'status' => \App\Models\AdminEpisodeLog::STATUS_PENDING,
+                                ]
+                            );
+                        }
+
                         // --- AUTO CLEANUP SINGLE UPLOAD ---
                         // Hapus file setelah selesai diproses
                         if (!empty($data['episode_html_file'])) {
