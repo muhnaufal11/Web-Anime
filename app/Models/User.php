@@ -37,6 +37,9 @@ class User extends Authenticatable implements FilamentUser
         'location',
         'is_admin',
         'role',
+        'bank_name',
+        'bank_account_number',
+        'bank_account_holder',
     ];
 
     protected $attributes = [

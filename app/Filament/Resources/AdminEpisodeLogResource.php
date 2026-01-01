@@ -22,12 +22,12 @@ class AdminEpisodeLogResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return auth()->user()?->isAdmin() ?? false;
     }
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return auth()->user()?->isAdmin() ?? false;
     }
 
     public static function canCreate(): bool
@@ -86,6 +86,7 @@ class AdminEpisodeLogResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->defaultSort('created_at', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('user.name')
                     ->label('Admin')
@@ -94,6 +95,11 @@ class AdminEpisodeLogResource extends Resource
                 Tables\Columns\TextColumn::make('episode.title')
                     ->label('Episode')
                     ->formatStateUsing(fn ($record) => 'Ep ' . $record->episode->episode_number . ' - ' . $record->episode->title)
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('episode.anime.title')
+                    ->label('Anime')
+                    ->limit(25)
+                    ->tooltip(fn ($record) => $record->episode->anime->title ?? null)
                     ->sortable(),
                 Tables\Columns\TextColumn::make('amount')
                     ->label('Bayaran')
@@ -116,6 +122,22 @@ class AdminEpisodeLogResource extends Resource
                     ->label('Dibuat')
                     ->dateTime('d M Y H:i')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('note')
+                    ->label('Catatan')
+                    ->limit(40)
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('user.bank_account_holder')
+                    ->label('Atas Nama')
+                    ->visible(fn () => auth()->user()?->isSuperAdmin())
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('user.bank_name')
+                    ->label('Bank')
+                    ->visible(fn () => auth()->user()?->isSuperAdmin())
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('user.bank_account_number')
+                    ->label('No. Rekening')
+                    ->visible(fn () => auth()->user()?->isSuperAdmin())
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
@@ -159,8 +181,15 @@ class AdminEpisodeLogResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
+        $query = parent::getEloquentQuery()
             ->with(['user', 'episode.anime']);
+
+        $user = auth()->user();
+        if ($user && !$user->isSuperAdmin()) {
+            $query->where('user_id', $user->id);
+        }
+
+        return $query;
     }
 
     public static function getPages(): array
