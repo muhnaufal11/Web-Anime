@@ -1,15 +1,21 @@
 # 🎛️ Panduan Lengkap Panel Admin - nipnime
 
-## 📋 Daftar Isi
+##  Daftar Isi
 1. [Akses Panel Admin](#akses-panel-admin)
 2. [Dashboard Overview](#dashboard-overview)
 3. [Manajemen Anime](#manajemen-anime)
 4. [Manajemen Episode](#manajemen-episode)
-5. [Manajemen Genre](#manajemen-genre)
-6. [Manajemen User](#manajemen-user)
-7. [Scraping System](#scraping-system)
-8. [Jadwal Tayang](#jadwal-tayang)
-9. [Tips & Troubleshooting](#tips--troubleshooting)
+5. [Video Servers](#video-servers)
+6. [Manajemen Genre](#manajemen-genre)
+7. [Manajemen User](#manajemen-user)
+8. [Anime Requests](#anime-requests)
+9. [Admin Episode Logs / Pendapatan](#admin-episode-logs--pendapatan)
+10. [Scraping System](#scraping-system)
+11. [MAL Sync](#mal-sync)
+12. [Import dari HTML](#import-dari-html)
+13. [Jadwal Tayang](#jadwal-tayang)
+14. [Holiday Settings](#holiday-settings)
+15. [Tips & Troubleshooting](#tips--troubleshooting)
 
 ---
 
@@ -70,9 +76,14 @@ Setelah login, Anda akan melihat Dashboard dengan:
 - **Genres** - Kelola kategori genre
 - **Users** - Kelola user dan admin
 - **Video Servers** - Kelola server streaming
-- **Scrape Configs** - Konfigurasi scraping
+- **Anime Requests** - Antrian permintaan user
+- **Admin Episode Logs / Pendapatan** - Performa & bayaran admin (khusus admin/superadmin)
+- **Scrape Configs** - Konfigurasi scraping (MAL / AnimeSail)
 - **Scrape Logs** - Log history scraping
 - **Schedules** - Jadwal tayang anime
+- **MAL Sync** - Sinkronisasi dari MyAnimeList
+- **Import dari HTML** - Import anime/episode via HTML
+- **Holiday Settings** - Toggle tema Natal/Tahun Baru
 
 ### Top Bar (Atas)
 - **Search** - Cari data dengan cepat
@@ -133,17 +144,14 @@ Setelah login, Anda akan melihat Dashboard dengan:
      - Min 10 karakter
      - Jelaskan plot anime
    
-   - **Type** *(Required)* - Pilih jenis:
-     - TV (Serial TV)
-     - Movie (Film)
-     - OVA (Original Video Animation)
-     - Special (Episode spesial)
-     - ONA (Original Net Animation)
+    - **Type** *(Required)* - Pilih jenis:
+       - TV (Serial TV)
+       - Movie (Film)
+       - ONA (Original Net Animation)
    
-   - **Status** *(Required)* - Status tayang:
-     - Ongoing (Sedang tayang)
-     - Completed (Sudah selesai)
-     - Upcoming (Akan datang)
+    - **Status** *(Required)* - Status tayang:
+       - Ongoing (Sedang tayang)
+       - Completed (Sudah selesai)
    
    - **Rating** *(Required)* - Rating 0-10
      - Gunakan slider atau ketik angka
@@ -157,16 +165,13 @@ Setelah login, Anda akan melihat Dashboard dengan:
      - Format: JPG, PNG, WebP
      - Ukuran max: 2MB
      - Rekomendasi: 300x450px (aspect ratio 2:3)
-     - Klik "Browse" untuk pilih file
-   
-   - **MAL ID** *(Optional)* - MyAnimeList ID
-     - Untuk sync dengan MAL API
-     - Contoh: 1735 (Naruto Shippuden)
+       - Klik "Browse" untuk pilih file (nama file otomatis memakai slug + timestamp)
 
    **Tab: Relations**
    - **Genres** - Pilih genre anime
      - Multi-select, bisa pilih banyak
      - Contoh: Action, Adventure, Shounen
+    - **Featured** - Toggle untuk menampilkan di spotlight homepage
 
 3. **Klik "Create"** untuk simpan
 
@@ -198,6 +203,18 @@ Setelah login, Anda akan melihat Dashboard dengan:
    - **Export** - Export data ke Excel/CSV
 3. **Klik "Run"** untuk eksekusi
 
+### Sinkronisasi Episode + Server via HTML (Action "Sync Videos")
+
+Gunakan jika sudah memiliki HTML halaman anime (hasil scrape manual atau simpanan offline) untuk otomatis membuat/update episode sekaligus server:
+
+1. Klik **Action "Sync Videos"** pada baris anime.
+2. Masukkan sumber HTML:
+   - **HTML Source**: paste langsung isi HTML.
+   - **Upload HTML**: unggah file `.html`/`.txt` (disimpan sementara di `storage/app/public/uploads/html`).
+3. Opsional: aktifkan **Delete missing** untuk menghapus episode yang tidak ada di HTML.
+4. Jalankan. Sistem akan membuat/memperbarui episode, membersihkan server episode yang dihapus (jika dipilih), dan mencatat log pendapatan admin untuk episode yang diproses.
+5. Jika HTML kosong, aksi akan dibatalkan dan muncul notifikasi "HTML Required".
+
 ---
 
 ## 📺 Manajemen Episode
@@ -227,9 +244,8 @@ Setelah login, Anda akan melihat Dashboard dengan:
      - Integer, contoh: 1, 2, 3
      - Untuk season 2 ep 1, bisa: 25 (lanjutan)
    
-   - **Title** *(Optional)* - Judul episode
-     - Contoh: "The Boy in the Iceberg"
-     - Jika kosong, auto jadi "Episode X"
+    - **Title** *(Required)* - Judul episode
+       - Contoh: "The Boy in the Iceberg"
    
    - **Slug** *(Auto-generate)* - URL slug
      - Format: anime-slug-episode-X
@@ -257,6 +273,29 @@ Setelah episode dibuat, tambahkan video server:
 
 5. **Klik "Create"**
 
+### Sync Servers dari HTML (Action "Sync Servers")
+
+Gunakan di tabel Episodes untuk parsing server dari HTML episode:
+
+1. Klik **Action "Sync Servers"** pada baris episode.
+2. Masukkan HTML:
+   - **Episode HTML**: paste langsung konten.
+   - **Upload Episode HTML**: unggah file `.html`/`.txt` (disimpan sementara di `storage/app/public/uploads/html-episodes`).
+3. Opsional: **Delete existing** untuk menghapus server lama yang tidak ditemukan di hasil parse.
+4. Sistem akan membuat/memperbarui server, mengonversi URL ke embed code, mencatat log pendapatan admin, dan menghapus file upload setelah diproses.
+5. Jika HTML kosong atau server tidak ditemukan, akan muncul notifikasi peringatan.
+
+### Bulk Sync Servers (aksi massal)
+
+Untuk banyak episode sekaligus (misal 1 season):
+
+1. Pilih beberapa episode → **Bulk Actions → Bulk Sync Servers**.
+2. Pilih sumber:
+   - **HTML Content**: satu HTML dipakai untuk semua episode terpilih.
+   - **Upload HTML Files (per episode)**: unggah banyak file; nama file harus mengandung nomor episode (regex akan mendeteksi `Episode 5`, `_05`, `-12.html`, dll).
+3. Opsional: **Delete existing** untuk membersihkan server yang tidak muncul di hasil parse.
+4. Jalankan. Sistem akan memetakan file ke episode, memproses server, membuat log pendapatan admin, dan otomatis menghapus file upload setelah selesai.
+
 ### Tips Episode Management
 
 **Nomor Episode:**
@@ -273,6 +312,28 @@ Setelah episode dibuat, tambahkan video server:
 **Bulk Episode Creation:**
 - Gunakan script scraping untuk import massal
 - Atau gunakan CSV import (jika tersedia)
+
+---
+
+## 🔗 Video Servers
+
+Gunakan menu **Video Servers** untuk mengelola server per episode secara langsung (di luar halaman Episode).
+
+### Membuat / Mengedit Server
+
+1. Klik **"New Video Server"** atau edit server yang ada.
+2. Isi field:
+   - **Server Name** *(required)* – nama provider (mis. Streamtape, GDrive).
+   - **Embed URL** *(required)* – URL atau embed code; sistem menyimpan apa adanya.
+   - **Active** – toggle aktif/nonaktif.
+   - **Episode** *(required)* – pilih episode terkait (searchable + preload).
+3. Simpan.
+
+### Fitur Tabel
+
+- Kolom utama: server name, episode title.
+- Aksi **Copy** untuk menduplikasi server (nama otomatis ditambahkan "(Copy)") lalu diarahkan ke halaman edit.
+- Aksi standar: Edit, Delete; Bulk Delete tersedia.
 
 ---
 
@@ -338,168 +399,117 @@ Thriller        - Thriller
 
 ### Melihat Daftar User
 
-1. Klik **"Users"** di sidebar
-2. Tabel menampilkan:
-   - **Name** - Nama user
-   - **Email** - Email user
-   - **Avatar** - Foto profil
-   - **Is Admin** - Status admin
-   - **Bio** - Deskripsi singkat
-   - **Created At** - Tanggal registrasi
+1. Klik **"Users"** di sidebar.
+2. Kolom penting:
+   - **Avatar, Nama, Email, Role** (User/Admin/Superadmin).
+   - **Episode Dibuat** & **Total Bayaran** (hanya terlihat oleh superadmin).
+   - **Komentar** & **Riwayat** (jumlah komentar dan watch history per user).
+   - **Terdaftar** (tanggal join).
 
-### Membuat User Baru
+### Membuat / Mengedit User
 
-1. **Klik "New User"**
+1. Klik **"New User"** atau edit baris yang ada.
+2. Field utama:
+   - **Name, Email, Password** (password wajib saat create, opsional saat edit; kosongkan jika tidak ganti).
+   - **Avatar upload**, **Bio**, **Phone**, **Gender**, **Birth Date**, **Location**.
+   - **Role** (User/Admin/Superadmin) hanya bisa diubah oleh superadmin; admin biasa hanya bisa melihat perannya.
+3. Simpan. Password otomatis di-hash.
 
-2. **Isi Form:**
-   - **Name** *(Required)* - Nama lengkap
-   - **Email** *(Required)* - Email unik
-   - **Password** *(Required)* - Min 8 karakter
-   - **Avatar URL** *(Optional)* - Link foto profil
-   - **Bio** *(Optional)* - Deskripsi singkat
-   - **Is Admin** - Centang untuk jadikan admin
+### Mengelola Role Admin
 
-3. **Klik "Create"**
+- **Toggle Admin** di tabel hanya terlihat oleh superadmin. Tidak bisa menurunkan/menaikkan diri sendiri atau superadmin lain.
+- Bulk actions untuk **Jadikan Admin** / **Hapus Role Admin** juga hanya untuk superadmin.
+- Skrip CLI alternatif: `php quick_make_admin.php` atau `php create_admin.php` untuk membuat akun admin baru.
 
-### Mengubah User Menjadi Admin
+### Aturan Hapus
 
-**Cara 1: Via Admin Panel**
-1. Klik user yang ingin diubah
-2. Centang checkbox **"Is Admin"**
-3. Klik "Save"
-
-**Cara 2: Via Script (Terminal)**
-```bash
-php quick_make_admin.php
-# Pilih user dari daftar
-```
-
-### Reset Password User
-
-1. **Edit User**
-2. **Isi field "Password"** dengan password baru
-3. **Klik "Save"**
-
-> Password otomatis di-hash dengan bcrypt
-
-### Menonaktifkan User
-
-Saat ini tidak ada soft delete, tapi bisa:
-1. **Reset password** ke random string
-2. **Hapus user** jika tidak diperlukan lagi
+- Tidak bisa menghapus akun sendiri (baik single delete maupun bulk).
+- Hindari menghapus superadmin lain tanpa konfirmasi operasional.
 
 ### Tips User Management
 
-**Security:**
-- Jangan buat terlalu banyak admin
-- Gunakan password kuat (min 12 karakter)
-- Review daftar admin secara berkala
+- Gunakan peran minimal (least privilege) dan review admin berkala.
+- Lengkapi avatar & bio untuk tampilan profil publik.
+- Manfaatkan badge **Episode Dibuat** dan **Total Bayaran** untuk audit kinerja (superadmin only).
 
-**Data User:**
-- Bio digunakan untuk profile page
-- Avatar URL bisa dari Gravatar atau upload
-- Email wajib unik (tidak boleh duplikat)
+---
+
+## 📨 Anime Requests
+
+Menu ini menampung permintaan user (anime baru atau penambahan episode).
+
+### Melihat & Menyaring
+- Kolom: Votes, Judul, Tipe (Anime Baru / Tambah Episode), Status (Pending/Approved/Rejected/Completed), User, Link MAL, Tanggal.
+- Filter berdasarkan **Status** dan **Tipe**. Badge navigasi menampilkan jumlah pending.
+
+### Memproses Request
+1. Pilih baris → pilih aksi:
+   - **Approve** (isi catatan opsional) → status jadi Approved.
+   - **Reject** (wajib isi alasan) → status jadi Rejected.
+   - **Complete** (setelah dikerjakan) → status Completed.
+2. Setiap aksi mencatat `processed_at` dan `processed_by`.
+
+### Form & Catatan
+- Field utama: Judul, MAL URL/ID, alasan request, tipe (anime baru / tambah episode), opsi link ke anime yang sudah ada, status, admin notes, upvotes (read-only).
+- Gunakan catatan admin untuk memberi update ke user.
+
+---
+
+## 💰 Admin Episode Logs / Pendapatan
+
+Menu ini hanya muncul untuk admin/superadmin. Log dibuat otomatis saat sync episode/server melalui panel.
+
+### Akses & Tampilan
+- Admin melihat log miliknya; superadmin melihat semua log.
+- Kolom: Admin, Episode (dengan nomor), Anime, Bayaran, Status (Pending/Approved/Paid), Tanggal, Catatan. Superadmin juga bisa melihat data rekening/metode bayar admin.
+
+### Update Metode Pembayaran (Header Action)
+- Tombol **Update Rekening / Metode Bayar** di header untuk menyimpan bank/provider, nomor akun/wallet, atas nama, metode (bank/ewallet/paypal/cash), dan catatan pembayaran.
+
+### Alur Pembayaran (Superadmin)
+1. Review log berstatus Pending.
+2. Gunakan aksi **Set Approved** untuk menyetujui.
+3. Gunakan **Tandai Dibayar** (single atau bulk) untuk mengubah status ke Paid; modal akan menampilkan ringkasan metode bayar yang terisi.
+
+### Catatan
+- Admin tidak bisa membuat/mengedit log manual; hanya superadmin yang dapat membuat/mengedit/hapus.
+- Log pending badge di menu menampilkan jumlah pending saat ini.
 
 ---
 
 ## 🕷️ Scraping System
 
-### Apa itu Scraping System?
+### Apa & Sumber
 
-Sistem otomatis untuk mengambil data anime dari website sumber (seperti Kusonime, Otakudesu, dll) dan import ke database.
+Sistem sinkronisasi terjadwal/manual untuk menarik metadata atau episode dari sumber yang didukung:
+- **MyAnimeList**
+- **AnimeSail**
+- **Both** (kombinasi)
 
-### Melihat Scrape Configs
+### Scrape Configs
 
-1. Klik **"Scrape Configs"** di sidebar
-2. Tabel menampilkan:
-   - **Name** - Nama konfigurasi
-   - **Source Type** - Jenis sumber (Kusonime, Otakudesu)
-   - **Base URL** - URL website sumber
-   - **Is Active** - Status aktif/nonaktif
-   - **Last Scraped** - Terakhir dijalankan
+1. Buka **Scrape Configs**.
+2. Kolom utama: Name, Source (MAL/AnimeSail/Both), Sync Type (Metadata/Episodes/Both), Active, Auto Sync, Max Items, Last Run.
+3. Buat/ubah config:
+    - **Name** *(wajib)*.
+    - **Source**: `myanimelist`, `animesail`, atau `both`.
+    - **Sync Type**: `metadata`, `episodes`, atau `both`.
+    - **Active** toggle untuk mengaktifkan config.
+    - **Auto Sync** toggle + **Schedule (Cron)** jika auto sync diaktifkan.
+    - **Max Items Per Sync** (1–100) untuk membatasi batch.
+    - **Filters (key/value)** opsional.
+4. **Run Sync** action akan memanggil `php artisan anime:sync` dengan parameter config; `last_run_at` diupdate dan notifikasi sukses dikirim.
 
-### Menambah Scrape Config Baru
+### Scrape Logs
 
-1. **Klik "New Scrape Config"**
+1. Buka **Scrape Logs**.
+2. Kolom: Config, Source (MAL/AnimeSail), Type (Metadata/Episodes/Full), Status (Running/Success/Failed/Partial), Processed/Created/Updated/Failed, Started, Completed.
+3. Filter berdasarkan **Source** dan **Status**. Aksi: View, Delete. Sorting default berdasarkan waktu terbaru.
 
-2. **Isi Form:**
-   
-   **Basic Info:**
-   - **Name** *(Required)* - Nama config
-     - Contoh: "Kusonime Latest Episodes"
-   
-   - **Source Type** *(Required)* - Pilih sumber:
-     - Kusonime
-     - Otakudesu
-     - Custom
-   
-   - **Base URL** *(Required)* - URL website
-     - Contoh: "https://kusonime.com"
-   
-   - **Is Active** - Centang untuk aktifkan
-
-   **Selectors (CSS):**
-   - **List Selector** - Selector untuk list anime
-     - Contoh: `.post`
-   
-   - **Title Selector** - Selector judul
-     - Contoh: `.post-title a`
-   
-   - **Image Selector** - Selector gambar
-     - Contoh: `.post-thumbnail img`
-   
-   - **Link Selector** - Selector link detail
-     - Contoh: `.post-title a`
-
-   **Advanced:**
-   - **Auto Scrape** - Scrape otomatis setiap X menit
-   - **Scrape Interval** - Interval waktu (menit)
-   - **Max Pages** - Maksimal halaman per scrape
-
-3. **Klik "Create"**
-
-### Menjalankan Scraping Manual
-
-1. **Pilih Config** yang ingin dijalankan
-2. **Klik tombol "Run Scraping"** di detail page
-3. **Tunggu proses** selesai (bisa 1-5 menit)
-4. **Cek Scrape Logs** untuk hasil
-
-### Melihat Scrape Logs
-
-1. Klik **"Scrape Logs"** di sidebar
-2. Tabel menampilkan:
-   - **Config** - Konfigurasi yang digunakan
-   - **Status** - Success/Failed/Running
-   - **Items Found** - Jumlah item ditemukan
-   - **Items Imported** - Jumlah berhasil import
-   - **Errors** - Pesan error (jika ada)
-   - **Started At** - Waktu mulai
-   - **Completed At** - Waktu selesai
-
-### Filter Logs
-
-- **Status:** Success, Failed, Running
-- **Date Range:** Tanggal tertentu
-- **Config:** Berdasarkan config tertentu
-
-### Troubleshooting Scraping
-
-**Problem: Scraping Failed**
-- Cek koneksi internet
-- Cek apakah website sumber masih aktif
-- Verify selector CSS masih valid
-- Cek Scrape Logs untuk error detail
-
-**Problem: Items Found tapi tidak Import**
-- Cek apakah anime sudah ada (duplicate check)
-- Cek validation rules (judul, synopsis required)
-- Cek foreign key (genre, dll)
-
-**Problem: Scraping Terlalu Lambat**
-- Kurangi Max Pages
-- Tambah delay antar request
-- Gunakan queue untuk background processing
+### Troubleshooting Ringkas
+- **Running terlalu lama**: kurangi `Max Items`, matikan `Auto Sync` sementara, cek queue worker.
+- **Failed/Partial**: buka log detail, cek pesan error, coba turunkan limit atau ganti sumber.
+- **Tidak ada data baru**: pastikan config aktif, sumber benar, dan limit > 0.
 
 ---
 
@@ -528,18 +538,17 @@ php artisan queue:work --queue=default --tries=3
 Biarkan worker berjalan di terminal terpisah saat proses sync.
 
 ### Cara Pakai di Panel
-1. Buka menu: Sidebar → **MAL Sync** atau langsung `http://localhost:8000/admin/my-anime-list-sync`
+1. Buka menu: Sidebar → **MAL Sync** (halaman `mal-sync`).
 2. Pilih **Sync Type**:
-    - **Top**: Ambil anime teratas dari MAL
-    - **Seasonal**: Ambil anime per musim (Winter/Spring/Summer/Fall) dan tahun
-    - **Search**: Cari anime berdasarkan judul
-3. Atur parameter:
-    - **Year/Season**: Kosongkan untuk tahun/musim saat ini, atau isi manual (misal 2020, Summer)
-    - **Limit**: Jumlah anime (mulai dari 10 untuk testing, default hingga 25-300 tergantung endpoint)
-    - **Download Poster Images**: ON untuk simpan poster lokal (lebih lambat), OFF untuk lebih cepat
-4. Klik **Start Sync**.
-5. Perhatikan **Activity Log** dan **progress bar**; akan berubah seiring proses (0% → 100%).
-6. Setelah selesai, cek menu **Anime** untuk melihat hasil dan **Scrape Logs** bila tersedia.
+   - **Top**: Top anime by rating.
+   - **Seasonal**: Pilih musim (Winter/Spring/Summer/Fall/All) + Year (opsional, default tahun berjalan).
+   - **Search**: Cari berdasarkan judul.
+   - **Search by MAL ID**: Masukkan ID anime spesifik (dari URL MAL).
+3. Parameter lain:
+   - **Limit** (opsional): kosongkan untuk ambil semua dari endpoint; isi angka kecil (10-25) untuk uji coba.
+   - **Download Poster Images**: ON untuk unduh poster ke storage lokal; OFF untuk lebih cepat.
+4. Klik **Start Sync**. Proses dijalankan via job `MalSyncJob`; progress & log disimpan di cache dan akan tampil real-time di panel.
+5. Setelah status `done`, periksa **Anime** untuk hasil import. Jika `error`, lihat notifikasi dan ulangi dengan limit lebih kecil.
 
 ### Tips Penggunaan
 - Mulai dengan `Limit = 10` dulu untuk uji coba.
@@ -560,6 +569,26 @@ Biarkan worker berjalan di terminal terpisah saat proses sync.
 
 ---
 
+## 📥 Import dari HTML
+
+Gunakan menu **Import dari HTML** (Tools) untuk memasukkan data dari file HTML yang sudah dimuat lengkap.
+
+### Kapan Dipakai
+- Saat memiliki dump HTML dari situs sumber dan ingin mengisi anime/episode/server tanpa scraping langsung.
+
+### Langkah Umum
+1. Buka **Tools → Import dari HTML**.
+2. Pilih halaman **Import**.
+3. Upload/paste HTML sesuai instruksi di halaman (gunakan HTML yang sudah fully rendered agar data lengkap).
+4. Jalankan import. Sistem akan mencoba membuat Anime, Episodes, dan Video Servers berdasarkan parser internal.
+5. Cek hasil di menu **Anime** / **Episodes**. Jika diperlukan, lengkapi poster/genre secara manual.
+
+### Catatan
+- Simpan backup HTML untuk rerun bila diperlukan.
+- Pastikan slug unik; sesuaikan manual bila ada konflik.
+
+---
+
 ## 📅 Jadwal Tayang (Schedules)
 
 ### Melihat Jadwal Tayang
@@ -577,12 +606,12 @@ Biarkan worker berjalan di terminal terpisah saat proses sync.
 
 2. **Isi Form:**
    - **Anime** *(Required)* - Pilih anime
-   - **Day of Week** *(Required)* - Hari tayang
-     - Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
-   - **Broadcast Time** *(Required)* - Jam tayang
-     - Format: HH:MM (24 jam)
-     - Contoh: 19:00, 22:30
-   - **Is Active** - Centang untuk aktifkan
+    - **Day of Week** *(Required)* - Hari tayang (Senin–Minggu)
+    - **Broadcast Time** - Jam tayang (format 24 jam, 00:00–23:59)
+    - **Tanggal Episode Berikutnya** - Opsional, catat tanggal episode selanjutnya.
+    - **Timezone** - Pilih WIB/WITA/WIT atau JST.
+    - **Is Active** - Toggle aktif/nonaktif.
+    - **Notes** - Catatan tambahan (opsional).
 
 3. **Klik "Create"**
 
@@ -595,13 +624,22 @@ Biarkan worker berjalan di terminal terpisah saat proses sync.
 ### Tips Jadwal Tayang
 
 **Timezone:**
-- Gunakan timezone lokal (WIB/WITA/WIT)
-- Atau gunakan JST (Japan Standard Time) untuk anime Jepang
+- Gunakan timezone lokal (WIB/WITA/WIT) atau JST sesuai sumber.
+- Catat timezone dengan benar jika jadwal dipakai untuk reminder user.
 
 **Update Otomatis:**
-- Jadwal digunakan untuk notifikasi user
-- Episode baru bisa auto-publish sesuai jadwal
-- Tampil di homepage sebagai "Airing Today"
+- Jadwal dapat difilter per hari dan status aktif di tabel.
+- Gunakan kolom "Episode Berikutnya" untuk mencatat siklus rilis.
+
+---
+
+## 🎄 Holiday Settings
+
+Halaman **Holiday Settings** (Tools) untuk mengaktifkan tema musiman di sisi pengguna.
+
+- Toggle **Christmas Mode** untuk efek salju.
+- Toggle **New Year Mode** untuk efek kembang api.
+- Simpan untuk menulis nilai ke `SiteSetting` (kunci `christmas_mode` dan `new_year_mode`).
 
 ---
 
@@ -947,6 +985,6 @@ Panel admin Filament menyediakan interface yang powerful dan user-friendly untuk
 
 ---
 
-*Dokumen ini terakhir diupdate: 27 Desember 2025*
+*Dokumen ini terakhir diupdate: 2 Januari 2026*
 *Versi Panel: Filament v3.x*
-*Framework: Laravel 10.x*
+*Framework: Laravel 11.x*
