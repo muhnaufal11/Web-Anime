@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Log;
 class VideoProxyController extends Controller
 {
     /**
-     * Proxy untuk AnimeSail (Internal IP)
+     * Proxy untuk AnimeSail (Internal IP) - Tetap sama
      */
     public function proxyAnimeSail(Request $request)
     {
@@ -29,8 +29,7 @@ class VideoProxyController extends Controller
         try {
             $response = Http::withOptions([
                 'verify' => false,
-                'timeout' => 5, // Cukup 5 detik
-                'connect_timeout' => 3 
+                'timeout' => 5,
             ])
             ->get($upstreamUrl);
 
@@ -39,14 +38,13 @@ class VideoProxyController extends Controller
                 ->header('Access-Control-Allow-Origin', '*');
 
         } catch (\Exception $e) {
-            // Jangan log terlalu berisik, cukup error umum
-            return response("Proxy Error (Internal): " . $e->getMessage(), 502);
+            return response("Proxy Error: " . $e->getMessage(), 502);
         }
     }
 
     /**
-     * Proxy untuk Aghanim, Acefile, dll (External)
-     * PERBAIKAN: Timeout lebih ketat & Penanganan Error 521
+     * Proxy External (Aghanim, Acefile, dll)
+     * FITUR BARU: Stealth Mode (Penyamaran Browser Lengkap)
      */
     public function proxyExternal(Request $request)
     {
@@ -62,46 +60,61 @@ class VideoProxyController extends Controller
         }
 
         // 2. Siapkan Penyamaran (Spoofing)
-        // Kita parsing URL target untuk membuat header palsu
         $parsed = parse_url($url);
         $scheme = $parsed['scheme'] ?? 'http';
         $host   = $parsed['host'] ?? '';
         
-        // Kalau host gagal diparsing, jangan lanjutkan (bisa bikin crash)
         if (empty($host)) {
-            return response("Invalid URL Host", 400);
+            return response("Invalid Host", 400);
         }
 
-        $fakeOrigin = "$scheme://$host"; 
+        // Trik: Gunakan HTTPS di Referer/Origin walau targetnya HTTP (supaya lebih dipercaya)
+        $fakeOrigin = "https://" . $host; 
 
         try {
-            // 3. Request dengan Timeout Ketat (Supaya tidak Error 521)
+            // 3. Request dengan Header Browser Asli (Stealth Mode)
             $response = Http::withOptions([
                 'verify' => false,
-                'timeout' => 8,          // Maksimal tunggu 8 detik
-                'connect_timeout' => 5,  // Maksimal koneksi 5 detik
-                'allow_redirects' => true
+                'timeout' => 10,         
+                'connect_timeout' => 5,
+                'allow_redirects' => true,
+                'cookies' => true, // Wajib: Aktifkan Cookies
             ])
             ->withHeaders([
+                // Identitas Browser (Chrome Windows)
                 'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                
+                // Penyamaran Asal Request
                 'Referer' => $fakeOrigin . '/',
                 'Origin' => $fakeOrigin,
-                // Hapus header aneh-aneh lain yang berpotensi diblokir
+                
+                // Header Standar Browser (Supaya tidak dikira bot)
+                'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language' => 'en-US,en;q=0.9,id;q=0.8',
+                'Cache-Control' => 'no-cache',
+                'Pragma' => 'no-cache',
+                'Upgrade-Insecure-Requests' => '1',
+                
+                // Header Keamanan Fetch (Penting buat Cloudflare!)
+                'Sec-Fetch-Dest' => 'iframe',
+                'Sec-Fetch-Mode' => 'navigate',
+                'Sec-Fetch-Site' => 'cross-site',
+                'Sec-Fetch-User' => '?1',
+                'Sec-Ch-Ua' => '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                'Sec-Ch-Ua-Mobile' => '?0',
+                'Sec-Ch-Ua-Platform' => '"Windows"',
             ])
             ->get($url);
 
-            // 4. Kirim Balik Hasilnya
+            // 4. Kirim Balik Hasil
             return response($response->body(), $response->status())
                 ->header('Content-Type', $response->header('Content-Type') ?? 'text/html')
                 ->header('Access-Control-Allow-Origin', '*') 
-                ->header('X-Frame-Options', 'ALLOWALL');
+                ->header('X-Frame-Options', 'ALLOWALL'); // Hapus larangan iframe
 
         } catch (\Exception $e) {
-            // Catat error ke log Laravel supaya kita tahu kenapa
             Log::error("Proxy Fail [{$url}]: " . $e->getMessage());
-            
-            // Tampilkan pesan error sopan di player (bukan 521)
-            return response("Maaf, video tidak dapat dimuat lewat proxy. (Timeout/Blocked).", 504);
+            return response("Gagal memuat video (Blocked/Timeout).", 502);
         }
     }
 }
