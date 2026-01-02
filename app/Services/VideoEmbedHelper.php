@@ -9,22 +9,20 @@ class VideoEmbedHelper
 {
     /**
      * Extract original URL from AnimeSail proxy URL
-     * e.g. from "154.26.137.28/utils/player/framezilla?bsrc=Ly9hY2VmaWxlLmNvL3BsYXllci8xNjk0NDU2OA==" 
-     * to "https://acefile.co/player/16944568"
      */
     public static function extractOriginalUrl(string $url): ?string
     {
-        // Check if it's an AnimeSail proxy URL
+        // Cek apakah ini URL proxy (154.26.137.28 atau /utils/player/)
         if (stripos($url, '154.26.137.28') !== false || stripos($url, '/utils/player/') !== false) {
-            // Try to extract bsrc parameter
+            // Coba ambil parameter bsrc
             if (preg_match('/[?&]bsrc=([^&]+)/i', $url, $matches)) {
                 $encoded = urldecode($matches[1]);
                 $decoded = @base64_decode($encoded, true);
                 if ($decoded) {
-                    // FIX: Gunakan http sebagai default jika protokol tidak ada (//example.com)
-                    // Server video jadul seringkali belum support HTTPS
+                    // [PENTING] Kembalikan ke HTTPS sebagai default!
+                    // Server LOKAL/Acefile biasanya butuh HTTPS agar tidak dianggap "Invalid"
                     if (strpos($decoded, '//') === 0) {
-                        return 'http:' . $decoded;
+                        return 'https:' . $decoded; 
                     }
                     if (preg_match('/^https?:/i', $decoded)) {
                         return $decoded;
@@ -32,7 +30,7 @@ class VideoEmbedHelper
                 }
             }
             
-            // Try to extract id parameter (for gphoto)
+            // Coba ambil parameter id (untuk gphoto)
             if (preg_match('/[?&]id=([^&]+)/i', $url, $matches)) {
                 $encoded = urldecode($matches[1]);
                 $decoded = @base64_decode($encoded, true);
@@ -47,18 +45,15 @@ class VideoEmbedHelper
     
     /**
      * Convert server URL to embeddable iframe HTML
-     * Now prefers original URLs over proxy URLs
      */
     public static function toEmbedCode(string $url, ?string $serverName = null): string
     {
-        // Already iframe HTML
+        // Jika sudah berupa iframe HTML
         if (stripos($url, '<iframe') === 0) {
-            // Try to extract and use original URL from iframe src
             if (preg_match('/src=["\']([^"\']+)["\']/i', $url, $matches)) {
                 $srcUrl = html_entity_decode($matches[1]);
                 $originalUrl = self::extractOriginalUrl($srcUrl);
                 if ($originalUrl) {
-                    // Replace proxy URL with original URL in iframe
                     return preg_replace('/src=["\'][^"\']+["\']/i', 'src="' . htmlspecialchars($originalUrl, ENT_QUOTES, 'UTF-8') . '"', $url);
                 }
             }
@@ -67,13 +62,13 @@ class VideoEmbedHelper
 
         $url = trim($url);
         
-        // Try to extract original URL if this is a proxy URL
+        // Coba extract url asli dulu
         $originalUrl = self::extractOriginalUrl($url);
         if ($originalUrl) {
             $url = $originalUrl;
         }
 
-        // aghanim.xyz/tools/lokal (lokal player)
+        // Aghanim.xyz (Lokal Player)
         if (stripos($url, 'aghanim.xyz') !== false && stripos($url, '/tools/lokal/') !== false) {
             return sprintf(
                 '<iframe src="%s" id="picasa" frameborder="0" width="100%%" height="100%%" allowfullscreen="allowfullscreen" scrolling="no" allow="autoplay; fullscreen; encrypted-media" referrerpolicy="no-referrer"></iframe>',
@@ -81,7 +76,7 @@ class VideoEmbedHelper
             );
         }
 
-        // General iframe sources (MP4Upload, MixDrop, Kraken, Acefile, etc.) - embed directly
+        // Server Umum (Direct Embed)
         if (stripos($url, 'mp4upload.com') !== false) {
             return sprintf(
                 '<iframe src="%s" frameborder="0" width="100%%" height="100%%" allow="autoplay; fullscreen; encrypted-media" allowfullscreen referrerpolicy="no-referrer"></iframe>',
@@ -110,7 +105,7 @@ class VideoEmbedHelper
             );
         }
 
-        // Default iframe wrapper for any URL
+        // Default Wrapper
         return sprintf(
             '<iframe src="%s" scrolling="no" frameborder="0" width="100%%" height="100%%" allow="autoplay; fullscreen; encrypted-media" allowfullscreen referrerpolicy="no-referrer"></iframe>',
             htmlspecialchars($url, ENT_QUOTES, 'UTF-8')
@@ -118,14 +113,12 @@ class VideoEmbedHelper
     }
 
     /**
-     * Apply proxy to known blocked hosts so iframe refuses-to-connect is avoided.
-     * Accepts either an iframe HTML string or a plain URL.
+     * Tentukan apakah perlu diproxy
      */
     public static function proxify(string $url): string
     {
         $value = trim($url);
 
-        // If already iframe HTML, swap the src attribute when the host needs proxying
         if (self::isEmbedCode($value)) {
             if (preg_match('/src=["\']([^"\']+)["\']/i', $value, $matches)) {
                 $src = html_entity_decode($matches[1]);
@@ -141,7 +134,6 @@ class VideoEmbedHelper
             return $value;
         }
 
-        // Plain URL
         if (self::shouldProxyUrl($value)) {
             return self::proxyUrl($value);
         }
@@ -150,7 +142,7 @@ class VideoEmbedHelper
     }
 
     /**
-     * Determine whether a URL should be proxied (blocked hosts, internal aggregators).
+     * List domain yang wajib lewat proxy
      */
     protected static function shouldProxyUrl(string $url): bool
     {
@@ -174,18 +166,16 @@ class VideoEmbedHelper
     }
 
     /**
-     * Build proxied URL through the local proxy route.
+     * Buat URL Proxy
      */
     protected static function proxyUrl(string $url): string
     {
-        // FIX UTAMA: Jangan paksa HTTPS replacement disini.
-        // Kirim URL apa adanya (termasuk http://) ke proxy controller.
-        return route('video.proxy.external', ['url' => rawurlencode(trim($url))]);
+        // FIX: Jangan paksa HTTPS disini, biarkan apa adanya.
+        // Tapi kita hapus rawurlencode() ganda agar Controller tidak bingung membacanya.
+        // Laravel route() sudah otomatis meng-encode parameter.
+        return route('video.proxy.external', ['url' => trim($url)]);
     }
 
-    /**
-     * Check if URL is already an embed/iframe code
-     */
     public static function isEmbedCode(string $url): bool
     {
         return stripos($url, '<iframe') === 0;
