@@ -21,9 +21,10 @@ class VideoEmbedHelper
                 $encoded = urldecode($matches[1]);
                 $decoded = @base64_decode($encoded, true);
                 if ($decoded) {
-                    // Add https: if starts with //
+                    // FIX: Gunakan http sebagai default jika protokol tidak ada (//example.com)
+                    // Server video jadul seringkali belum support HTTPS
                     if (strpos($decoded, '//') === 0) {
-                        return 'https:' . $decoded;
+                        return 'http:' . $decoded;
                     }
                     if (preg_match('/^https?:/i', $decoded)) {
                         return $decoded;
@@ -177,8 +178,9 @@ class VideoEmbedHelper
      */
     protected static function proxyUrl(string $url): string
     {
-        $clean = preg_replace('#^http://#i', 'https://', trim($url));
-        return route('video.proxy.external', ['url' => rawurlencode($clean)]);
+        // FIX UTAMA: Jangan paksa HTTPS replacement disini.
+        // Kirim URL apa adanya (termasuk http://) ke proxy controller.
+        return route('video.proxy.external', ['url' => rawurlencode(trim($url))]);
     }
 
     /**
