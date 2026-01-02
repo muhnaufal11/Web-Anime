@@ -142,6 +142,26 @@
                         <div class="text-4xl mb-4">🎬</div>
                         <p class="text-gray-400 font-semibold text-lg">Episode belum tersedia</p>
                         <p class="text-gray-500 text-sm mt-2">Cek kembali nanti untuk update episode terbaru</p>
+
+                        @auth
+                            <form action="{{ route('request.store') }}" method="POST" class="mt-6 inline-flex">
+                                @csrf
+                                <input type="hidden" name="type" value="add_episodes">
+                                <input type="hidden" name="anime_id" value="{{ $anime->id }}">
+                                <input type="hidden" name="title" value="{{ $anime->title }}">
+                                <input type="hidden" name="mal_url" value="">
+                                <input type="hidden" name="reason" value="Tambah episode untuk {{ $anime->title }} (auto from detail)">
+                                <button type="submit" class="px-5 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold rounded-xl transition-all shadow-lg shadow-red-600/30">
+                                    Request Tambah Episode
+                                </button>
+                            </form>
+                        @else
+                            <div class="mt-6">
+                                <a href="{{ route('login') }}" class="inline-flex px-5 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold rounded-xl transition-all shadow-lg shadow-red-600/30">
+                                    Login untuk request
+                                </a>
+                            </div>
+                        @endauth
                     </div>
                 @endif
             </div>
