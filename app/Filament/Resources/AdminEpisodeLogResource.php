@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\AdminEpisodeLogResource\Pages;
 use App\Models\AdminEpisodeLog;
+use App\Models\User;
 use Filament\Forms;
 use Filament\Resources\Form;
 use Filament\Resources\Resource;
@@ -347,7 +348,8 @@ class AdminEpisodeLogResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery()
-            ->with(['user', 'episode.anime']);
+            ->with(['user', 'episode.anime'])
+            ->whereHas('user', fn ($q) => $q->where('role', '!=', User::ROLE_SUPERADMIN));
 
         $user = auth()->user();
         if ($user && !$user->isSuperAdmin()) {
