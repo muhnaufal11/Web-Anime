@@ -117,6 +117,71 @@ class VideoEmbedHelper
     }
 
     /**
+     * Apply proxy to known blocked hosts so iframe refuses-to-connect is avoided.
+     * Accepts either an iframe HTML string or a plain URL.
+     */
+    public static function proxify(string $url): string
+    {
+        $value = trim($url);
+
+        // If already iframe HTML, swap the src attribute when the host needs proxying
+        if (self::isEmbedCode($value)) {
+            if (preg_match('/src=["\']([^"\']+)["\']/i', $value, $matches)) {
+                $src = html_entity_decode($matches[1]);
+                if (self::shouldProxyUrl($src)) {
+                    $proxied = self::proxyUrl($src);
+                    return preg_replace(
+                        '/src=["\'][^"\']+["\']/i',
+                        'src="' . htmlspecialchars($proxied, ENT_QUOTES, 'UTF-8') . '"',
+                        $value
+                    );
+                }
+            }
+            return $value;
+        }
+
+        // Plain URL
+        if (self::shouldProxyUrl($value)) {
+            return self::proxyUrl($value);
+        }
+
+        return $value;
+    }
+
+    /**
+     * Determine whether a URL should be proxied (blocked hosts, internal aggregators).
+     */
+    protected static function shouldProxyUrl(string $url): bool
+    {
+        if (empty($url)) {
+            return false;
+        }
+
+        $targets = [
+            'aghanim.xyz',
+            '154.26.137.28',
+            '/utils/player/',
+        ];
+
+        foreach ($targets as $needle) {
+            if (stripos($url, $needle) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Build proxied URL through the local proxy route.
+     */
+    protected static function proxyUrl(string $url): string
+    {
+        $clean = preg_replace('#^http://#i', 'https://', trim($url));
+        return route('video.proxy.external', ['url' => rawurlencode($clean)]);
+    }
+
+    /**
      * Check if URL is already an embed/iframe code
      */
     public static function isEmbedCode(string $url): bool

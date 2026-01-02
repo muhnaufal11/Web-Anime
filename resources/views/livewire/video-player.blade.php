@@ -1,11 +1,13 @@
 {{-- Video Player Component --}}
 @php($playerContainerId = 'player-shell-' . $episode->id)
+@php($rawEmbed = $selectedServer->embed_url ?? null)
+@php($embedSource = $rawEmbed ? \App\Services\VideoEmbedHelper::proxify($rawEmbed) : null)
 <div class="w-full space-y-4">
     {{-- Video Player Container --}}
     <div class="relative group" x-data="{ fullscreen: false }">
         <div id="{{ $playerContainerId }}" class="theme-elevated rounded-lg overflow-hidden shadow-2xl aspect-video border theme-border fullscreen-container">
         @if($selectedServer)
-            @if(str_contains($selectedServer->embed_url, '<iframe'))
+            @if($embedSource && str_contains($rawEmbed, '<iframe'))
                 {{-- Handle Full Iframe Tags --}}
                 <div class="w-full h-full relative">
                     <style>
@@ -19,20 +21,20 @@
                         }
                     </style>
                     <div class="video-wrapper w-full h-full">
-                        {!! $selectedServer->embed_url !!}
+                        {!! $embedSource !!}
                     </div>
                 </div>
 
-            @elseif(str($selectedServer->embed_url)->lower()->endsWith('.mp4'))
+            @elseif($rawEmbed && str($rawEmbed)->lower()->endsWith('.mp4'))
                 {{-- Handle Direct MP4 Links --}}
                 <video 
-                    src="{{ $selectedServer->embed_url }}" 
+                    src="{{ $embedSource ?? $rawEmbed }}" 
                     class="w-full h-full object-contain" 
                     controls 
                     autoplay>
                 </video>
 
-            @elseif(str($selectedServer->embed_url)->lower()->endsWith('.m3u8'))
+            @elseif($rawEmbed && str($rawEmbed)->lower()->endsWith('.m3u8'))
                 {{-- Handle HLS Streaming Links --}}
                 <video 
                     id="hls-player-{{ $selectedServer->id }}" 
@@ -44,7 +46,7 @@
                     <script>
                         (function initHlsPlayer(){
                             const video = document.getElementById('hls-player-{{ $selectedServer->id }}');
-                            const src = '{{ $selectedServer->embed_url }}';
+                            const src = '{{ $embedSource ?? $rawEmbed }}';
                             if (!video) return;
                             function setup(){
                                 if (video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -70,10 +72,10 @@
                     </script>
                 @endpush
 
-            @elseif(str_contains($selectedServer->embed_url, 'http'))
+            @elseif($embedSource && str_contains($rawEmbed, 'http'))
                 {{-- Handle Standard Embed URL (Iframe) --}}
                 <iframe 
-                    src="{{ $selectedServer->embed_url }}" 
+                    src="{{ $embedSource }}" 
                     class="w-full h-full border-none" 
                     allow="autoplay; fullscreen; picture-in-picture; encrypted-media; clipboard-write" 
                     allowfullscreen
