@@ -73,16 +73,19 @@ class EpisodeResource extends Resource
                             ->label('Nama Server')
                             ->default('Server Admin 720p')
                             ->required(),
-                        Forms\Components\FileUpload::make('video_file')
+                        Forms\Components\FileUpload::make('video_files')
                             ->label('File Video (MP4)')
+                            ->multiple()
                             ->required()
                             ->directory('videos/episodes')
                             ->disk('public')
+                            ->preserveFilenames()
                             ->acceptedFileTypes(['video/mp4'])
-                            ->helperText('File disimpan di storage publik dan langsung dibuatkan server lokal.'),
+                            ->helperText('Bisa pilih banyak file; setiap file jadi satu server otomatis.'),
                     ])
                     ->action(function (Episode $record, array $data) {
-                        if (empty($data['video_file'])) {
+                        $files = $data['video_files'] ?? [];
+                        if (empty($files)) {
                             \Filament\Notifications\Notification::make()
                                 ->title('Upload gagal')
                                 ->danger()
@@ -92,19 +95,32 @@ class EpisodeResource extends Resource
                         }
 
                         $serverName = $data['server_name'] ?? 'Server Admin 720p';
-                        $path = $data['video_file'];
-                        $url = Storage::disk('public')->url($path);
+                        $created = 0; $updated = 0;
 
-                        $vs = VideoServer::updateOrCreate(
-                            [
-                                'episode_id' => $record->id,
-                                'server_name' => $serverName,
-                            ],
-                            [
-                                'embed_url' => $url,
-                                'is_active' => true,
-                            ]
-                        );
+                        foreach ($files as $filePath) {
+                            $url = Storage::disk('public')->url($filePath);
+                            $quality = null;
+                            if (preg_match('/(1080|720|480|360)p/i', $filePath, $m)) {
+                                $quality = $m[1] . 'p';
+                            }
+                            $name = $serverName;
+                            if ($quality && stripos($serverName, $quality) === false) {
+                                $name = $serverName . ' ' . $quality;
+                            }
+
+                            $vs = VideoServer::updateOrCreate(
+                                [
+                                    'episode_id' => $record->id,
+                                    'server_name' => $name,
+                                ],
+                                [
+                                    'embed_url' => $url,
+                                    'is_active' => true,
+                                ]
+                            );
+
+                            if ($vs->wasRecentlyCreated) { $created++; } else { $updated++; }
+                        }
 
                         // Admin log when a local upload happens
                         $user = auth()->user();
@@ -125,7 +141,7 @@ class EpisodeResource extends Resource
                         \Filament\Notifications\Notification::make()
                                 ->title('Upload berhasil')
                                 ->success()
-                                ->body('Server ditambahkan: ' . $serverName)
+                            ->body('Server ditambahkan: ' . ($created + $updated) . ' entri')
                             ->send();
                     }),
                 Tables\Actions\Action::make('sync_servers')
