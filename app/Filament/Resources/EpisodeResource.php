@@ -256,6 +256,108 @@ class EpisodeResource extends Resource
                     })
             ])
             ->bulkActions([
+                Tables\Actions\BulkAction::make('bulk_upload_local')
+                    ->label('Bulk Upload Video Lokal')
+                    ->icon('heroicon-o-upload')
+                    ->color('primary')
+                    ->requiresConfirmation()
+                    ->form([
+                        Forms\Components\TextInput::make('server_name')
+                            ->label('Nama Server')
+                            ->default('Server Admin 720p')
+                            ->required(),
+                        Forms\Components\FileUpload::make('video_files')
+                            ->label('File Video (MP4)')
+                            ->multiple()
+                            ->required()
+                            ->directory('videos/episodes')
+                            ->disk('public')
+                            ->preserveFilenames()
+                            ->acceptedFileTypes(['video/mp4'])
+                            ->helperText('Map otomatis ke episode berdasar nomor di nama file (contoh: Ep 3, episode-04).'),
+                    ])
+                    ->action(function (\Illuminate\Database\Eloquent\Collection $records, array $data) {
+                        $files = $data['video_files'] ?? [];
+                        if (empty($files)) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Upload gagal')
+                                ->danger()
+                                ->body('File video wajib diisi.')
+                                ->send();
+                            return;
+                        }
+
+                        $serverName = $data['server_name'] ?? 'Server Admin 720p';
+                        $map = [];
+                        $unmapped = 0;
+
+                        foreach ($files as $filePath) {
+                            $filename = urldecode(basename($filePath));
+                            $epNum = null;
+                            if (preg_match('/(?:Episode|Ep)[^0-9]*(\d+)/i', $filename, $m)) {
+                                $epNum = (int) $m[1];
+                            } elseif (preg_match('/[\-_](\d+)\.(?:mp4)$/i', $filename, $m)) {
+                                $epNum = (int) $m[1];
+                            }
+
+                            if ($epNum) {
+                                $map[$epNum][] = $filePath;
+                            } else {
+                                $unmapped++;
+                            }
+                        }
+
+                        $created = 0; $updated = 0; $skipped = 0;
+                        $recordsList = $records->sortBy('episode_number')->values();
+
+                        foreach ($recordsList as $episode) {
+                            $epNum = $episode->episode_number;
+                            if (!isset($map[$epNum]) || empty($map[$epNum])) {
+                                $skipped++;
+                                continue;
+                            }
+
+                            foreach ($map[$epNum] as $filePath) {
+                                $url = \Storage::disk('public')->url($filePath);
+                                $quality = null;
+                                if (preg_match('/(1080|720|480|360)p/i', $filePath, $m)) {
+                                    $quality = $m[1] . 'p';
+                                }
+
+                                $name = $serverName;
+                                if ($quality && stripos($serverName, $quality) === false) {
+                                    $name = $serverName . ' ' . $quality;
+                                }
+
+                                $vs = \App\Models\VideoServer::updateOrCreate(
+                                    [
+                                        'episode_id' => $episode->id,
+                                        'server_name' => $name,
+                                    ],
+                                    [
+                                        'embed_url' => $url,
+                                        'is_active' => true,
+                                    ]
+                                );
+
+                                if ($vs->wasRecentlyCreated) { $created++; } else { $updated++; }
+                            }
+                        }
+
+                        $body = "Created: {$created} | Updated: {$updated}";
+                        if ($skipped > 0) {
+                            $body .= " | Skipped (no match): {$skipped}";
+                        }
+                        if ($unmapped > 0) {
+                            $body .= " | File tak ter-mapping: {$unmapped}";
+                        }
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('Bulk upload selesai')
+                            ->success()
+                            ->body($body)
+                            ->send();
+                    }),
                 Tables\Actions\DeleteBulkAction::make(),
                 Tables\Actions\BulkAction::make('bulk_sync_servers')
                     ->label('Bulk Sync Servers')
