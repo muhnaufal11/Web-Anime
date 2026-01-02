@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Log;
 class VideoProxyController extends Controller
 {
     /**
-     * Proxy untuk AnimeSail (Internal IP) - Tetap sama
+     * 1. Proxy Internal (AnimeSail)
+     * Tetap gunakan Guzzle di sini karena koneksi ke IP 154... biasanya stabil.
      */
     public function proxyAnimeSail(Request $request)
     {
@@ -29,92 +30,83 @@ class VideoProxyController extends Controller
         try {
             $response = Http::withOptions([
                 'verify' => false,
-                'timeout' => 5,
-            ])
-            ->get($upstreamUrl);
+                'timeout' => 5, // Timeout pendek agar tidak hang
+            ])->get($upstreamUrl);
 
             return response($response->body(), $response->status())
                 ->header('Content-Type', $response->header('Content-Type'))
                 ->header('Access-Control-Allow-Origin', '*');
 
         } catch (\Exception $e) {
-            return response("Proxy Error: " . $e->getMessage(), 502);
+            return response("Internal Proxy Error: " . $e->getMessage(), 200);
         }
     }
 
     /**
-     * Proxy External (Aghanim, Acefile, dll)
-     * FITUR BARU: Stealth Mode (Penyamaran Browser Lengkap)
+     * 2. Proxy External (Aghanim/Acefile) - VERSI NATIVE PHP (ANTI-CRASH)
+     * Menggunakan file_get_contents native untuk bypass Guzzle Crash (Error 502)
      */
     public function proxyExternal(Request $request)
     {
         $url = $request->input('url');
-        
-        if (empty($url)) {
-            return response('URL is empty', 400);
-        }
 
-        // 1. Pastikan Protokol Ada
+        // Validasi URL
+        if (empty($url)) {
+            return response("Error: URL Kosong", 200);
+        }
+        
+        // Auto-Protocol: Tambahkan http:// jika tidak ada
         if (!preg_match("~^(?:f|ht)tps?://~i", $url)) {
             $url = "http://" . $url;
         }
 
-        // 2. Siapkan Penyamaran (Spoofing)
+        // Siapkan Headers Penyamaran (Spoofing)
         $parsed = parse_url($url);
-        $scheme = $parsed['scheme'] ?? 'http';
-        $host   = $parsed['host'] ?? '';
-        
-        if (empty($host)) {
-            return response("Invalid Host", 400);
-        }
+        $host = $parsed['host'] ?? '';
+        $fakeOrigin = "https://" . $host;
 
-        // Trik: Gunakan HTTPS di Referer/Origin walau targetnya HTTP (supaya lebih dipercaya)
-        $fakeOrigin = "https://" . $host; 
+        // Konfigurasi Stream Context (Pengganti Guzzle)
+        $options = [
+            "http" => [
+                "method" => "GET",
+                "header" => implode("\r\n", [
+                    "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36",
+                    "Referer: $fakeOrigin/",
+                    "Origin: $fakeOrigin",
+                    "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                    "Connection: close" // PENTING: Tutup koneksi segera biar server tidak hang
+                ]),
+                "timeout" => 15,        // Beri waktu 15 detik
+                "ignore_errors" => true // Supaya status 403/404/500 tidak dianggap error PHP
+            ],
+            "ssl" => [
+                "verify_peer" => false,
+                "verify_peer_name" => false,
+            ]
+        ];
 
         try {
-            // 3. Request dengan Header Browser Asli (Stealth Mode)
-            $response = Http::withOptions([
-                'verify' => false,
-                'timeout' => 10,         
-                'connect_timeout' => 5,
-                'allow_redirects' => true,
-                'cookies' => true, // Wajib: Aktifkan Cookies
-            ])
-            ->withHeaders([
-                // Identitas Browser (Chrome Windows)
-                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                
-                // Penyamaran Asal Request
-                'Referer' => $fakeOrigin . '/',
-                'Origin' => $fakeOrigin,
-                
-                // Header Standar Browser (Supaya tidak dikira bot)
-                'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                'Accept-Language' => 'en-US,en;q=0.9,id;q=0.8',
-                'Cache-Control' => 'no-cache',
-                'Pragma' => 'no-cache',
-                'Upgrade-Insecure-Requests' => '1',
-                
-                // Header Keamanan Fetch (Penting buat Cloudflare!)
-                'Sec-Fetch-Dest' => 'iframe',
-                'Sec-Fetch-Mode' => 'navigate',
-                'Sec-Fetch-Site' => 'cross-site',
-                'Sec-Fetch-User' => '?1',
-                'Sec-Ch-Ua' => '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-                'Sec-Ch-Ua-Mobile' => '?0',
-                'Sec-Ch-Ua-Platform' => '"Windows"',
-            ])
-            ->get($url);
+            // Eksekusi Request secara Native (Lebih aman dari crash)
+            $context = stream_context_create($options);
+            $content = @file_get_contents($url, false, $context);
 
-            // 4. Kirim Balik Hasil
-            return response($response->body(), $response->status())
-                ->header('Content-Type', $response->header('Content-Type') ?? 'text/html')
-                ->header('Access-Control-Allow-Origin', '*') 
-                ->header('X-Frame-Options', 'ALLOWALL'); // Hapus larangan iframe
+            // Cek jika gagal total (koneksi putus/dns error)
+            if ($content === false) {
+                $error = error_get_last();
+                return response("Proxy Gagal (Native): " . ($error['message'] ?? 'Unknown Connection Error'), 200);
+            }
 
-        } catch (\Exception $e) {
-            Log::error("Proxy Fail [{$url}]: " . $e->getMessage());
-            return response("Gagal memuat video (Blocked/Timeout).", 502);
+            // Sukses! Return hasil apa adanya
+            // Kita paksa status 200 agar Cloudflare tidak menampilkan halaman error 502
+            return response($content, 200)
+                ->header('Content-Type', 'text/html')
+                ->header('Access-Control-Allow-Origin', '*')
+                ->header('X-Frame-Options', 'ALLOWALL');
+
+        } catch (\Throwable $e) {
+            // Tangkap Fatal Error (Throwable) yang biasanya bikin 502
+            Log::error("Proxy Native Crash: " . $e->getMessage());
+            return response("System Error (Native): " . $e->getMessage(), 200);
         }
     }
 }
