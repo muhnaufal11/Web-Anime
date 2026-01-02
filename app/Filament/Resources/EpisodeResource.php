@@ -71,7 +71,7 @@ class EpisodeResource extends Resource
                     ->form([
                         Forms\Components\TextInput::make('server_name')
                             ->label('Nama Server')
-                            ->default('Lokal 720p')
+                            ->default('Server Admin 720p')
                             ->required(),
                         Forms\Components\FileUpload::make('video_file')
                             ->label('File Video (MP4)')
@@ -91,7 +91,7 @@ class EpisodeResource extends Resource
                             return;
                         }
 
-                        $serverName = $data['server_name'] ?? 'Lokal 720p';
+                        $serverName = $data['server_name'] ?? 'Server Admin 720p';
                         $path = $data['video_file'];
                         $url = Storage::disk('public')->url($path);
 
@@ -117,15 +117,15 @@ class EpisodeResource extends Resource
                                 [
                                     'amount' => \App\Models\AdminEpisodeLog::DEFAULT_AMOUNT,
                                     'status' => \App\Models\AdminEpisodeLog::STATUS_PENDING,
-                                    'note' => 'Upload video lokal (' . $serverName . ')',
+                                    'note' => 'Upload video internal (' . $serverName . ')',
                                 ]
                             );
                         }
 
                         \Filament\Notifications\Notification::make()
-                            ->title('Upload berhasil')
-                            ->success()
-                            ->body('Server lokal ditambahkan: ' . $serverName)
+                                ->title('Upload berhasil')
+                                ->success()
+                                ->body('Server ditambahkan: ' . $serverName)
                             ->send();
                     }),
                 Tables\Actions\Action::make('sync_servers')
