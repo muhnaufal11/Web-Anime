@@ -69,7 +69,8 @@ class EpisodeResource extends Resource
                     ->icon('heroicon-o-upload')
                     ->color('primary')
                     ->form([
-                        Forms\Components\View::make('filament.components.upload-progress'),
+                        Forms\Components\View::make('filament.components.upload-progress')
+                            ->viewData(['target' => 'video_files']),
                         Forms\Components\TextInput::make('server_name')
                             ->label('Nama Server')
                             ->default('Server Admin 720p')
@@ -263,7 +264,8 @@ class EpisodeResource extends Resource
                     ->color('primary')
                     ->requiresConfirmation()
                     ->form([
-                        Forms\Components\View::make('filament.components.upload-progress'),
+                        Forms\Components\View::make('filament.components.upload-progress')
+                            ->viewData(['target' => 'video_files']),
                         Forms\Components\TextInput::make('server_name')
                             ->label('Nama Server')
                             ->default('Server Admin 720p')
