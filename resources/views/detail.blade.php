@@ -157,7 +157,7 @@
                             </form>
                         @else
                             <div class="mt-6">
-                                <a href="{{ route('login') }}" class="inline-flex px-5 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold rounded-xl transition-all shadow-lg shadow-red-600/30">
+                                <a href="{{ route('auth.login') }}" class="inline-flex px-5 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold rounded-xl transition-all shadow-lg shadow-red-600/30">
                                     Login untuk request
                                 </a>
                             </div>
@@ -236,8 +236,8 @@
                     </div>
                 @else
                     @php
-                        $loginUrl = \Illuminate\Support\Facades\Route::has('login')
-                            ? route('login')
+                        $loginUrl = \Illuminate\Support\Facades\Route::has('auth.login')
+                            ? route('auth.login')
                             : (\Illuminate\Support\Facades\Route::has('filament.auth.login')
                                 ? route('filament.auth.login')
                                 : url('/admin/login'));
