@@ -3,19 +3,16 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\EpisodeResource\Pages;
+use App\Filament\Resources\EpisodeResource\RelationManagers;
 use App\Models\Episode;
-use App\Models\VideoServer;
 use Filament\Forms;
 use Filament\Resources\Form;
 use Filament\Resources\Resource;
 use Filament\Resources\Table;
 use Filament\Tables;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\HtmlString; // Import penting untuk teks HTML helper
-use Filament\Forms\Components\Section; // Import untuk layout Section
-use Filament\Forms\Components\FileUpload; // Import untuk upload file
-use Filament\Forms\Components\TextInput; // Import untuk input text
+use Illuminate\Support\Facades\Storage; // <--- PENTING: Import Library Storage
+use App\Models\VideoServer;
 
 class EpisodeResource extends Resource
 {
@@ -27,84 +24,25 @@ class EpisodeResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Card::make()
-                    ->schema([
-                        Forms\Components\TextInput::make('episode_number')
-                            ->required()
-                            ->numeric()
-                            ->label('Nomor Episode'),
-
-                        Forms\Components\TextInput::make('title')
-                            ->required()
-                            ->maxLength(255)
-                            ->reactive()
-                            ->afterStateUpdated(fn (callable $set, $state) => $set('slug', Str::slug($state)))
-                            ->label('Judul Episode'),
-
-                        Forms\Components\TextInput::make('slug')
-                            ->required()
-                            ->maxLength(255)
-                            ->helperText('Auto-generated dari judul'),
-
-                        Forms\Components\Textarea::make('description')
-                            ->label('Deskripsi (Opsional)'),
-
-                        Forms\Components\Select::make('anime_id')
-                            ->relationship('anime', 'title')
-                            ->searchable()
-                            ->preload()
-                            ->placeholder('Cari & pilih anime')
-                            ->required()
-                            ->label('Anime'),
-                    ]),
-
-                // --- BAGIAN VIDEO SOURCE (DUAL MODE) ---
-                Section::make('Video Source')
-                    ->description('Pilih metode upload: Upload langsung (file kecil) atau Manual Filename (file besar via FileBrowser).')
-                    ->schema([
-                        
-                        // OPSI A: Upload Biasa (Hanya untuk file kecil <100MB)
-                        FileUpload::make('video_upload_kecil')
-                            ->label('Opsi A: Upload Video Kecil (<100MB)')
-                            ->directory('videos') // Disimpan di storage/app/public/videos
-                            ->reactive()
-                            ->afterStateUpdated(fn ($state, callable $set) => 
-                                // Jika upload berhasil, set URL otomatis
-                                $set('embed_url', $state ? 'storage/videos/' . $state->getClientOriginalName() : null)
-                            )
-                            ->helperText('Gunakan ini HANYA untuk trailer atau file kecil. Jangan untuk full episode 20GB.'),
-
-                        // OPSI B: Manual Filename (Integrasi FileBrowser CasaOS)
-                        TextInput::make('manual_filename')
-                            ->label('Opsi B: Nama File Besar (20GB+)')
-                            ->placeholder('Contoh: onepiece-ep1000.mp4')
-                            ->helperText(new HtmlString('
-                                <div style="margin-top:5px; padding:10px; background:#f3f4f6; border:1px solid #d1d5db; border-radius:5px; color:#1f2937;">
-                                    <b>Cara Upload File Besar (Anti-Gagal):</b>
-                                    <ol style="list-style-type:decimal; margin-left:15px; margin-bottom:0;">
-                                        <li>Buka aplikasi <b>FileBrowser</b> atau <b>Files</b> di CasaOS.</li>
-                                        <li>Upload video ke folder: <code>storage/app/public</code></li>
-                                        <li>Copy nama filenya, lalu paste di kotak ini.</li>
-                                    </ol>
-                                </div>
-                            '))
-                            ->reactive()
-                            ->afterStateUpdated(function ($state, callable $set) {
-                                // Otomatis format path storage
-                                if ($state) {
-                                    $set('embed_url', 'storage/' . $state);
-                                }
-                            }),
-
-                        // FIELD FINAL: URL yang akan disimpan ke Database
-                        TextInput::make('embed_url')
-                            ->label('Final Video URL (Auto-filled)')
-                            ->required()
-                            ->readOnly() // Admin tidak perlu edit ini manual
-                            ->columnSpanFull()
-                            ->helperText('Pastikan kotak ini terisi otomatis setelah Anda mengisi Opsi A atau B.'),
-                    ])
-                    ->columns(1),
+                Forms\Components\TextInput::make('episode_number')
+                    ->required()
+                    ->numeric(),
+                Forms\Components\TextInput::make('title')
+                    ->required()
+                    ->maxLength(255)
+                    ->reactive()
+                    ->afterStateUpdated(fn (callable $set, $state) => $set('slug', Str::slug($state))),
+                Forms\Components\TextInput::make('slug')
+                    ->required()
+                    ->maxLength(255)
+                    ->helperText('Auto-generated dari title'),
+                Forms\Components\Textarea::make('description'),
+                Forms\Components\Select::make('anime_id')
+                    ->relationship('anime', 'title')
+                    ->searchable()
+                    ->preload()
+                    ->placeholder('Cari & pilih anime')
+                    ->required(),
             ]);
     }
 
@@ -113,18 +51,12 @@ class EpisodeResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('episode_number')
-                    ->sortable()
-                    ->label('Eps'),
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('title')
                     ->searchable()
-                    ->sortable()
-                    ->limit(30),
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('anime.title')
-                    ->searchable()
-                    ->label('Anime'),
-                Tables\Columns\TextColumn::make('embed_url')
-                    ->limit(30)
-                    ->label('Video URL'),
+                    ->searchable(),
             ])
             ->filters([
                 //
@@ -132,10 +64,8 @@ class EpisodeResource extends Resource
             ->defaultSort('episode_number', 'asc')
             ->actions([
                 Tables\Actions\EditAction::make(),
-                
-                // Action Upload Lokal (Per Episode)
                 Tables\Actions\Action::make('upload_local')
-                    ->label('Upload Lokal')
+                    ->label('Upload Video Lokal')
                     ->icon('heroicon-o-upload')
                     ->color('primary')
                     ->form([
@@ -194,14 +124,28 @@ class EpisodeResource extends Resource
                             if ($vs->wasRecentlyCreated) { $created++; } else { $updated++; }
                         }
 
+                        // Admin log when a local upload happens
+                        $user = auth()->user();
+                        if ($user && $user->isAdmin()) {
+                            \App\Models\AdminEpisodeLog::updateOrCreate(
+                                [
+                                    'user_id' => $user->id,
+                                    'episode_id' => $record->id,
+                                ],
+                                [
+                                    'amount' => \App\Models\AdminEpisodeLog::DEFAULT_AMOUNT,
+                                    'status' => \App\Models\AdminEpisodeLog::STATUS_PENDING,
+                                    'note' => 'Upload video internal (' . $serverName . ')',
+                                ]
+                            );
+                        }
+
                         \Filament\Notifications\Notification::make()
                                 ->title('Upload berhasil')
                                 ->success()
                             ->body('Server ditambahkan: ' . ($created + $updated) . ' entri')
                             ->send();
                     }),
-
-                // Action Sync Servers (Per Episode)
                 Tables\Actions\Action::make('sync_servers')
                     ->label('Sync Servers')
                     ->icon('heroicon-o-link')
@@ -210,15 +154,16 @@ class EpisodeResource extends Resource
                         Forms\Components\Textarea::make('episode_html')
                             ->label('Episode HTML (opsional)')
                             ->rows(8)
-                            ->placeholder('Paste HTML halaman episode...'),
+                            ->placeholder('Paste HTML halaman episode untuk parsing tanpa jaringan'),
                         Forms\Components\FileUpload::make('episode_html_file')
                             ->label('Upload Episode HTML (opsional)')
                             ->acceptedFileTypes(['text/html','text/plain'])
                             ->directory('uploads/html-episodes')
-                            ->preserveFilenames(),
+                            ->preserveFilenames()
+                            ->helperText('Alternatif: upload file HTML halaman episode'),
                         Forms\Components\Toggle::make('delete_existing')
-                            ->label('Hapus server lama yang tidak ditemukan')
-                            ->default(false),
+                            ->label('Hapus server yang tidak ditemukan')
+                            ->helperText('Jika aktif, server lama yang tidak ada di hasil parse akan dihapus'),
                     ])
                     ->action(function (Episode $record, array $data) {
                         $service = app(\App\Services\AnimeSailService::class);
@@ -234,21 +179,29 @@ class EpisodeResource extends Resource
                         }
 
                         if (empty($html)) {
-                            \Filament\Notifications\Notification::make()->title('HTML Required')->danger()->send();
+                            \Filament\Notifications\Notification::make()
+                                ->title('HTML Required')
+                                ->danger()
+                                ->body('Mohon paste atau upload HTML halaman episode terlebih dahulu.')
+                                ->send();
                             return;
                         }
 
                         $servers = $service->getEpisodeServersFromHtml($html);
                         
                         if (empty($servers)) {
-                            \Filament\Notifications\Notification::make()->title('No servers found')->warning()->send();
+                            \Filament\Notifications\Notification::make()
+                                ->title('No servers found')
+                                ->warning()
+                                ->body('Tidak ada video server yang ditemukan dalam HTML ini.')
+                                ->send();
                             return;
                         }
 
                         if (!empty($data['delete_existing'])) {
                             $keepUrls = collect($servers)->pluck('url')->unique()->values()->all();
                             if (!empty($keepUrls)) {
-                                VideoServer::where('episode_id', $record->id)
+                                \App\Models\VideoServer::where('episode_id', $record->id)
                                     ->whereNotIn('embed_url', $keepUrls)
                                     ->delete();
                             }
@@ -261,7 +214,7 @@ class EpisodeResource extends Resource
                                 $serverData['name'] ?? null
                             );
                             
-                            $vs = VideoServer::updateOrCreate(
+                            $vs = \App\Models\VideoServer::updateOrCreate(
                                 [
                                     'episode_id' => $record->id,
                                     'embed_url' => $serverData['url'],
@@ -275,22 +228,36 @@ class EpisodeResource extends Resource
                             if ($vs->wasRecentlyCreated) { $created++; } else { $updated++; }
                         }
 
-                        // Cleanup file
+                        // --- AUTO CREATE ADMIN LOG (SETIAP SYNC) ---
+                        $user = auth()->user();
+                        if ($user && $user->isAdmin() && ($created > 0 || $updated > 0)) {
+                            \App\Models\AdminEpisodeLog::updateOrCreate(
+                                [
+                                    'user_id' => $user->id,
+                                    'episode_id' => $record->id,
+                                ],
+                                [
+                                    'amount' => \App\Models\AdminEpisodeLog::DEFAULT_AMOUNT,
+                                    'status' => \App\Models\AdminEpisodeLog::STATUS_PENDING,
+                                    'note' => "Sync video servers (Created: {$created}, Updated: {$updated})",
+                                ]
+                            );
+                        }
+
+                        // --- AUTO CLEANUP SINGLE UPLOAD ---
+                        // Hapus file setelah selesai diproses
                         if (!empty($data['episode_html_file'])) {
                             Storage::disk('public')->delete($data['episode_html_file']);
                         }
 
                         \Filament\Notifications\Notification::make()
-                            ->title('Sync completed')
+                            ->title('Sync servers completed')
                             ->success()
-                            ->body("Created: {$created} | Updated: {$updated}")
+                            ->body("Created: {$created} | Updated: {$updated} | Total detected: " . count($servers))
                             ->send();
                     })
             ])
             ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-                
-                // Bulk Upload Lokal
                 Tables\Actions\BulkAction::make('bulk_upload_local')
                     ->label('Bulk Upload Video Lokal')
                     ->icon('heroicon-o-upload')
@@ -315,109 +282,245 @@ class EpisodeResource extends Resource
                     ])
                     ->action(function (\Illuminate\Database\Eloquent\Collection $records, array $data) {
                         $files = $data['video_files'] ?? [];
-                        if (empty($files)) return;
+                        if (empty($files)) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Upload gagal')
+                                ->danger()
+                                ->body('File video wajib diisi.')
+                                ->send();
+                            return;
+                        }
 
                         $serverName = $data['server_name'] ?? 'Server Admin 720p';
                         $map = [];
+                        $unmapped = 0;
 
                         foreach ($files as $filePath) {
                             $filename = urldecode(basename($filePath));
-                            if (preg_match('/(?:Episode|Ep)[^0-9]*(\d+)/i', $filename, $m) || preg_match('/[\-_](\d+)\.(?:mp4)$/i', $filename, $m)) {
-                                $map[(int) $m[1]][] = $filePath;
+                            $epNum = null;
+                            if (preg_match('/(?:Episode|Ep)[^0-9]*(\d+)/i', $filename, $m)) {
+                                $epNum = (int) $m[1];
+                            } elseif (preg_match('/[\-_](\d+)\.(?:mp4)$/i', $filename, $m)) {
+                                $epNum = (int) $m[1];
+                            }
+
+                            if ($epNum) {
+                                $map[$epNum][] = $filePath;
+                            } else {
+                                $unmapped++;
                             }
                         }
 
-                        $created = 0; $updated = 0;
-                        foreach ($records as $episode) {
+                        $created = 0; $updated = 0; $skipped = 0;
+                        $recordsList = $records->sortBy('episode_number')->values();
+
+                        foreach ($recordsList as $episode) {
                             $epNum = $episode->episode_number;
-                            if (isset($map[$epNum])) {
-                                foreach ($map[$epNum] as $filePath) {
-                                    $url = Storage::disk('public')->url($filePath);
-                                    VideoServer::updateOrCreate(
-                                        ['episode_id' => $episode->id, 'server_name' => $serverName],
-                                        ['embed_url' => $url, 'is_active' => true]
-                                    );
-                                    $updated++; 
-                                }
+                            if (!isset($map[$epNum]) || empty($map[$epNum])) {
+                                $skipped++;
+                                continue;
                             }
+
+                            foreach ($map[$epNum] as $filePath) {
+                                $url = \Storage::disk('public')->url($filePath);
+                                $quality = null;
+                                if (preg_match('/(1080|720|480|360)p/i', $filePath, $m)) {
+                                    $quality = $m[1] . 'p';
+                                }
+
+                                $name = $serverName;
+                                if ($quality && stripos($serverName, $quality) === false) {
+                                    $name = $serverName . ' ' . $quality;
+                                }
+
+                                $vs = \App\Models\VideoServer::updateOrCreate(
+                                    [
+                                        'episode_id' => $episode->id,
+                                        'server_name' => $name,
+                                    ],
+                                    [
+                                        'embed_url' => $url,
+                                        'is_active' => true,
+                                    ]
+                                );
+
+                                if ($vs->wasRecentlyCreated) { $created++; } else { $updated++; }
+                            }
+                        }
+
+                        $body = "Created: {$created} | Updated: {$updated}";
+                        if ($skipped > 0) {
+                            $body .= " | Skipped (no match): {$skipped}";
+                        }
+                        if ($unmapped > 0) {
+                            $body .= " | File tak ter-mapping: {$unmapped}";
                         }
 
                         \Filament\Notifications\Notification::make()
                             ->title('Bulk upload selesai')
                             ->success()
-                            ->body("Processed {$updated} videos.")
+                            ->body($body)
                             ->send();
                     }),
-
-                // Bulk Sync Servers
+                Tables\Actions\DeleteBulkAction::make(),
                 Tables\Actions\BulkAction::make('bulk_sync_servers')
                     ->label('Bulk Sync Servers')
                     ->icon('heroicon-o-refresh')
                     ->color('success')
                     ->form([
                         Forms\Components\Textarea::make('html_content')
-                            ->label('HTML Content')
+                            ->label('HTML Content (untuk semua episode)')
                             ->rows(6)
-                            ->placeholder('Paste HTML...'),
+                            ->placeholder('Paste HTML halaman yang berisi video servers...')
+                            ->helperText('Opsional: Paste HTML yang sama untuk semua episode yang dipilih'),
                         Forms\Components\FileUpload::make('html_files')
-                            ->label('Upload HTML Files')
+                            ->label('Upload HTML Files (per episode)')
                             ->multiple()
-                            ->directory('uploads/bulk-html')
-                            ->preserveFilenames(),
+                            ->acceptedFileTypes(['text/html', 'text/plain', '.html', '.htm', '.txt'])
+                            ->directory('uploads/bulk-html') // Folder sementara
+                            ->preserveFilenames()
+                            ->helperText('Upload file HTML. Sistem akan membaca, sinkronisasi, lalu MENGHAPUS file otomatis agar hemat memori.'),
                         Forms\Components\Toggle::make('delete_existing')
-                            ->label('Hapus server lama')
+                            ->label('Hapus server lama yang tidak ditemukan')
                             ->default(false),
                     ])
                     ->action(function (\Illuminate\Database\Eloquent\Collection $records, array $data) {
                         $service = app(\App\Services\AnimeSailService::class);
+                        $globalHtml = $data['html_content'] ?? '';
                         $htmlFiles = $data['html_files'] ?? [];
+                        
                         $episodeHtmlMap = [];
                         
+                        // --- 1. BACA & MAPPING FILE ---
                         foreach ($htmlFiles as $file) {
                             $path = storage_path('app/public/' . $file);
+                            
                             if (is_file($path)) {
                                 $filename = urldecode(basename($file));
                                 $content = file_get_contents($path);
-                                if (preg_match('/(?:Episode|Ep)[^0-9]*(\d+)/i', $filename, $m) || preg_match('/[\s\-_](\d+)\.(?:html|txt|htm)$/i', $filename, $m)) {
-                                    $episodeHtmlMap[(int) $m[1]] = $content;
+                                
+                                // Regex Cerdas
+                                if (preg_match('/(?:Episode|Ep)[^0-9]*(\d+)/i', $filename, $matches)) {
+                                    $epNum = (int) $matches[1];
+                                    $episodeHtmlMap[$epNum] = $content;
+                                } elseif (preg_match('/[\s\-_](\d+)\.(?:html|txt|htm)$/i', $filename, $matches)) {
+                                    $epNum = (int) $matches[1];
+                                    $episodeHtmlMap[$epNum] = $content;
                                 }
                             }
                         }
                         
-                        $processed = 0;
-                        foreach ($records as $episode) {
-                            $html = $episodeHtmlMap[$episode->episode_number] ?? ($data['html_content'] ?? null);
-                            if (!$html) continue;
+                        if (empty($globalHtml) && empty($episodeHtmlMap)) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('File Tidak Terbaca')
+                                ->danger()
+                                ->body('Tidak ada file HTML yang cocok dengan nomor episode.')
+                                ->send();
+                            return;
+                        }
+                        
+                        $totalCreated = 0;
+                        $totalUpdated = 0;
+                        $processedEpisodes = 0;
+                        $skippedEpisodes = 0;
+                        
+                        $recordsList = $records->sortBy('episode_number')->values();
+                        
+                        // --- 2. PROSES DATA KE DATABASE ---
+                        foreach ($recordsList as $episode) {
+                            $html = null;
+                            $epNum = $episode->episode_number;
+
+                            if (isset($episodeHtmlMap[$epNum])) {
+                                $html = $episodeHtmlMap[$epNum];
+                            } elseif (!empty($globalHtml)) {
+                                $html = $globalHtml;
+                            }
+                            
+                            if (empty($html)) {
+                                $skippedEpisodes++;
+                                continue;
+                            }
                             
                             $servers = $service->getEpisodeServersFromHtml($html);
-                            if (empty($servers)) continue;
+                            if (empty($servers)) {
+                                $skippedEpisodes++;
+                                continue;
+                            }
                             
                             if (!empty($data['delete_existing'])) {
                                 $keepUrls = collect($servers)->pluck('url')->unique()->values()->all();
-                                VideoServer::where('episode_id', $episode->id)->whereNotIn('embed_url', $keepUrls)->delete();
+                                if (!empty($keepUrls)) {
+                                    \App\Models\VideoServer::where('episode_id', $episode->id)
+                                        ->whereNotIn('embed_url', $keepUrls)
+                                        ->delete();
+                                }
                             }
                             
-                            foreach ($servers as $s) {
-                                $embedCode = \App\Services\VideoEmbedHelper::toEmbedCode($s['url'], $s['name'] ?? null);
-                                VideoServer::updateOrCreate(
-                                    ['episode_id' => $episode->id, 'embed_url' => $s['url']],
-                                    ['server_name' => $s['name'] ?? 'Unknown', 'embed_url' => $embedCode, 'is_active' => true]
+                            foreach ($servers as $serverData) {
+                                $embedCode = \App\Services\VideoEmbedHelper::toEmbedCode(
+                                    $serverData['url'],
+                                    $serverData['name'] ?? null
+                                );
+                                
+                                $vs = \App\Models\VideoServer::updateOrCreate(
+                                    [
+                                        'episode_id' => $episode->id,
+                                        'embed_url' => $serverData['url'],
+                                    ],
+                                    [
+                                        'server_name' => $serverData['name'] ?? 'Unknown',
+                                        'embed_url' => $embedCode,
+                                        'is_active' => true,
+                                    ]
+                                );
+                                if ($vs->wasRecentlyCreated) { $totalCreated++; } else { $totalUpdated++; }
+                            }
+                            $processedEpisodes++;
+                            
+                            // --- AUTO CREATE ADMIN LOG PER EPISODE ---
+                            $user = auth()->user();
+                            if ($user && $user->isAdmin() && !empty($servers)) {
+                                \App\Models\AdminEpisodeLog::updateOrCreate(
+                                    [
+                                        'user_id' => $user->id,
+                                        'episode_id' => $episode->id,
+                                    ],
+                                    [
+                                        'amount' => \App\Models\AdminEpisodeLog::DEFAULT_AMOUNT,
+                                        'status' => \App\Models\AdminEpisodeLog::STATUS_PENDING,
+                                        'note' => "Bulk sync video servers (" . count($servers) . " servers)",
+                                    ]
                                 );
                             }
-                            $processed++;
+                        }
+
+                        // --- 3. AUTO CLEANUP (FITUR FILE SAMPAH) ---
+                        // Hapus semua file yang baru saja diupload dari disk
+                        foreach ($htmlFiles as $file) {
+                            if (Storage::disk('public')->exists($file)) {
+                                Storage::disk('public')->delete($file);
+                            }
                         }
                         
-                        // Cleanup
-                        foreach ($htmlFiles as $file) {
-                            if (Storage::disk('public')->exists($file)) Storage::disk('public')->delete($file);
+                        // Bersihkan folder jika kosong (opsional, agar folder rapi)
+                        // Storage::disk('public')->deleteDirectory('uploads/bulk-html');
+
+                        $message = "Processed: {$processedEpisodes} | Created: {$totalCreated} | Updated: {$totalUpdated}";
+                        if ($skippedEpisodes > 0) {
+                            $message .= " | Skipped: {$skippedEpisodes}";
                         }
                         
                         \Filament\Notifications\Notification::make()
-                            ->title('Bulk Sync Completed')
+                            ->title('Bulk Sync Completed & Cleaned Up')
                             ->success()
-                            ->body("Processed: {$processed} episodes")
+                            ->body($message . " (File sampah telah dihapus)")
                             ->send();
                     })
+                    ->deselectRecordsAfterCompletion()
+                    ->requiresConfirmation()
+                    ->modalHeading('Bulk Sync Video Servers')
+                    ->modalSubheading('Upload file -> Proses -> File otomatis dihapus setelah selesai.'),
             ]);
     }
     
