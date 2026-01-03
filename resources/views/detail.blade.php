@@ -11,7 +11,8 @@
 @section('og_image', $poster)
 @push('structured-data')
 <script type="application/ld+json">
-{!! json_encode([
+@php
+$schemaData = [
     '@context' => 'https://schema.org',
     '@type' => 'TVSeries',
     'name' => $anime->title,
@@ -20,11 +21,16 @@
     'genre' => $anime->genres->pluck('name')->values(),
     'numberOfEpisodes' => $anime->episodes->count(),
     'url' => route('detail', $anime),
-    'potentialAction' => [
+];
+
+if ($anime->episodes->first()) {
+    $schemaData['potentialAction'] = [
         '@type' => 'WatchAction',
-        'target' => $anime->episodes->first() ? route('watch', $anime->episodes->first()) : route('detail', $anime),
-    ],
-], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT) !!}
+        'target' => route('watch', $anime->episodes->first()),
+    ];
+}
+@endphp
+{!! json_encode($schemaData, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT) !!}
 </script>
 @endpush
 
