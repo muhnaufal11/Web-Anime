@@ -199,16 +199,18 @@ class HomeController extends Controller
         $currentPage = \Illuminate\Pagination\Paginator::resolveCurrentPage() ?? 1;
         $items = $paginatedData->slice(($currentPage - 1) * $perPage, $perPage);
 
-        $pagination = new \Illuminate\Pagination\Paginator(
+        $total = $paginatedData->count();
+        $pagination = new \Illuminate\Pagination\LengthAwarePaginator(
             $items,
+            $total,
             $perPage,
             $currentPage,
             [
                 'path' => \Illuminate\Pagination\Paginator::resolveCurrentPath(),
                 'query' => \Illuminate\Support\Facades\Request::query(),
+                'pageName' => 'page',
             ]
         );
-        $pagination->setPageName('page');
 
         // Get episode IDs in order
         $episodeIds = $items->pluck('episode_id')->toArray();
