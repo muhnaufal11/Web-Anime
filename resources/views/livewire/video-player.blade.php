@@ -115,17 +115,11 @@
                                 .then(response => response.json())
                                 .then(data => {
                                     if(data.url) {
-                                        // Load via blob to hide direct URL
-                                        fetch(data.url)
-                                            .then(r => r.blob())
-                                            .then(blob => {
-                                                video.src = URL.createObjectURL(blob);
-                                            })
-                                            .catch(() => {
-                                                video.src = data.url;
-                                            });
+                                        // Set src directly for better compatibility
+                                        video.src = data.url;
                                     }
-                                });
+                                })
+                                .catch(err => console.error('Failed to load video'));
                                 
                                 video.addEventListener('contextmenu', e => e.preventDefault());
                             }
@@ -186,7 +180,12 @@
                                         setup();
                                     }
                                 }
-                            });
+                            })
+                            .catch(err => console.error('Failed to load HLS'));
+                        })();
+                    </script>
+                @endpush
+
             @elseif($embedSource && str_contains($rawEmbed, 'http'))
                 {{-- Handle Standard Embed URL (Iframe) --}}
                 <iframe 

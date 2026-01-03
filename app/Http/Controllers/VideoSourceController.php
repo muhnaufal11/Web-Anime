@@ -29,21 +29,11 @@ class VideoSourceController extends Controller
             $embedUrl = $videoServer->embed_url;
             $type = $this->getVideoType($embedUrl);
             
-            // For iframe embed, return proxified HTML
-            if ($type === 'iframe') {
-                $proxifiedEmbed = \App\Services\VideoEmbedHelper::proxify($embedUrl);
-                return response()->json([
-                    'url' => $proxifiedEmbed,
-                    'type' => $type
-                ]);
-            }
-            
-            // For direct URLs, return proxified URL
-            $proxifiedUrl = \App\Services\VideoEmbedHelper::proxify($embedUrl);
-            
+            // Return URL without proxification to ensure playback works
             return response()->json([
-                'url' => $proxifiedUrl ?: $embedUrl,
-                'type' => $type
+                'url' => $embedUrl,
+                'type' => $type,
+                'proxied' => false
             ]);
             
         } catch (\Exception $e) {
