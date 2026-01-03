@@ -61,6 +61,7 @@
                 {{-- Handle Direct MP4 Links --}}
                 <video 
                     id="video-player-{{ $selectedServer->id }}"
+                    data-video-id="{{ $selectedServer->id }}"
                     class="w-full h-full object-contain" 
                     controls 
                     autoplay
@@ -72,9 +73,25 @@
                         (function() {
                             const video = document.getElementById('video-player-{{ $selectedServer->id }}');
                             if(video) {
-                                // Obfuscate source URL
-                                const encodedSrc = '{{ base64_encode($embedSource ?? $rawEmbed) }}';
-                                video.src = atob(encodedSrc);
+                                // Obfuscated video source
+                                const parts = [
+                                    '{{ substr($embedSource ?? $rawEmbed, 0, 20) }}',
+                                    '{{ substr($embedSource ?? $rawEmbed, 20, 30) }}',
+                                    '{{ substr($embedSource ?? $rawEmbed, 50) }}'
+                                ];
+                                const videoUrl = parts.join('');
+                                
+                                // Load video via blob to hide source
+                                fetch(videoUrl)
+                                    .then(response => response.blob())
+                                    .then(blob => {
+                                        const blobUrl = URL.createObjectURL(blob);
+                                        video.src = blobUrl;
+                                    })
+                                    .catch(() => {
+                                        // Fallback if blob fails
+                                        video.src = videoUrl;
+                                    });
                                 
                                 // Prevent inspection
                                 video.addEventListener('contextmenu', e => e.preventDefault());
@@ -97,9 +114,15 @@
                     <script>
                         (function initHlsPlayer(){
                             const video = document.getElementById('hls-player-{{ $selectedServer->id }}');
-                            const encodedSrc = '{{ base64_encode($embedSource ?? $rawEmbed) }}';
-                            const src = atob(encodedSrc);
                             if (!video) return;
+                            
+                            // Obfuscated HLS source
+                            const parts = [
+                                '{{ substr($embedSource ?? $rawEmbed, 0, 20) }}',
+                                '{{ substr($embedSource ?? $rawEmbed, 20, 30) }}',
+                                '{{ substr($embedSource ?? $rawEmbed, 50) }}'
+                            ];
+                            const src = parts.join('');
                             
                             // Prevent right click
                             video.addEventListener('contextmenu', e => e.preventDefault());
