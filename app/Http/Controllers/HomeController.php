@@ -6,6 +6,7 @@ use App\Models\Anime;
 use App\Models\Episode;
 use App\Models\Genre;
 use App\Models\WatchHistory;
+use Illuminate\Support\Str;
 
 class HomeController extends Controller
 {
@@ -112,8 +113,9 @@ class HomeController extends Controller
         $query = Anime::query();
 
         // Fix: Wrap OR conditions in a closure to avoid breaking other filters
-        if (request('search')) {
-            $search = request('search');
+        $rawSearch = request('search');
+        if ($rawSearch) {
+            $search = $rawSearch;
             $query->where(function($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
                   ->orWhere('synopsis', 'like', "%{$search}%");
@@ -145,6 +147,48 @@ class HomeController extends Controller
             ->paginate(12)
             ->appends(request()->except('page'));
 
+        // Fuzzy suggestion jika hasil kosong
+        $suggestions = collect();
+        if ($animes->isEmpty() && $rawSearch) {
+            $needle = Str::lower(trim($rawSearch));
+
+            $candidates = Anime::select('id', 'title', 'slug', 'poster_image', 'type', 'release_year', 'rating')
+                ->limit(500) // batasi untuk performa
+                ->get();
+
+            $scored = $candidates->map(function ($anime) use ($needle) {
+                $title = Str::lower($anime->title);
+
+                // Similarity percentage
+                similar_text($needle, $title, $percent);
+
+                // Levenshtein distance (cap length to avoid large cost)
+                $distance = levenshtein(
+                    Str::limit($needle, 60, ''),
+                    Str::limit($title, 60, '')
+                );
+
+                return [
+                    'anime' => $anime,
+                    'percent' => $percent,
+                    'distance' => $distance,
+                ];
+            })
+            // Filter: cukup mirip atau jarak dekat
+            ->filter(function ($item) {
+                return $item['percent'] >= 45 || $item['distance'] <= 6;
+            })
+            // Urutkan: similarity tinggi dulu, lalu distance rendah
+            ->sortBy([
+                ['percent', 'desc'],
+                ['distance', 'asc'],
+            ])
+            ->take(6)
+            ->values();
+
+            $suggestions = $scored->pluck('anime');
+        }
+
         $genres = Genre::all();
         
         // Get available years for filter
@@ -157,6 +201,7 @@ class HomeController extends Controller
             'animes' => $animes,
             'genres' => $genres,
             'availableYears' => $availableYears,
+            'suggestions' => $suggestions,
         ]);
     }
 

@@ -165,17 +165,41 @@
                         {{ $animes->links() }}
                     </div>
                 @else
-                    <!-- Empty State -->
+                    <!-- Empty State with suggestions -->
                     <div class="text-center py-20">
                         <div class="inline-block mb-6">
                             <div class="w-24 h-24 bg-gradient-to-br from-red-600/20 to-red-700/20 rounded-full flex items-center justify-center">
                                 <svg class="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 0 0118 0z"/>
                                 </svg>
                             </div>
                         </div>
                         <h3 class="text-2xl font-black text-white mb-2">Anime tidak ditemukan</h3>
-                        <p class="text-gray-400 mb-6 max-w-md mx-auto">Coba ubah filter pencarian atau jelajahi kategori lain untuk menemukan anime favoritmu</p>
+                        <p class="text-gray-400 mb-6 max-w-md mx-auto">Coba cek ejaan judul atau pilih dari rekomendasi berikut.</p>
+
+                        @if(isset($suggestions) && $suggestions->count() > 0)
+                            <div class="bg-white/5 border border-white/10 rounded-2xl p-6 max-w-3xl mx-auto mb-6">
+                                <p class="text-sm text-gray-300 font-semibold mb-4">Mungkin yang kamu maksud:</p>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    @foreach($suggestions as $suggestion)
+                                        <a href="{{ route('detail', $suggestion) }}" class="group flex items-center gap-3 p-3 rounded-xl bg-[#0f1115] border border-white/10 hover:border-red-600/60 transition-all">
+                                            <div class="w-14 h-20 rounded-lg overflow-hidden bg-gray-800 flex-shrink-0">
+                                                <img src="{{ $suggestion->poster_image ? asset('storage/' . $suggestion->poster_image) : asset('images/placeholder.png') }}" alt="{{ $suggestion->title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                                            </div>
+                                            <div class="text-left min-w-0">
+                                                <p class="text-white font-bold text-sm leading-tight line-clamp-2 group-hover:text-red-500 transition-colors">{{ $suggestion->title }}</p>
+                                                <div class="flex items-center gap-2 text-[11px] text-gray-400 mt-1">
+                                                    <span>{{ $suggestion->release_year }}</span>
+                                                    <span class="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 uppercase font-black">{{ $suggestion->type }}</span>
+                                                    <span class="text-yellow-400 font-black">★ {{ number_format($suggestion->rating, 1) }}</span>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+
                         <a href="{{ route('search') }}" class="inline-block px-8 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all shadow-lg">
                             Lihat Semua Anime
                         </a>
