@@ -152,9 +152,25 @@ class HomeController extends Controller
         if ($animes->isEmpty() && $rawSearch) {
             $needle = Str::lower(trim($rawSearch));
 
-            $candidates = Anime::select('id', 'title', 'slug', 'poster_image', 'type', 'release_year', 'rating')
-                ->limit(500) // batasi untuk performa
+            // Ambil kandidat yang kira-kira mirip lebih dulu (pakai potongan awal judul)
+            $prefix = Str::substr($needle, 0, 4);
+            $baseSelect = ['id', 'title', 'slug', 'poster_image', 'type', 'release_year', 'rating'];
+
+            $candidates = Anime::select($baseSelect)
+                ->when($prefix, function ($q) use ($prefix) {
+                    $q->where('title', 'like', "%{$prefix}%");
+                })
+                ->orderBy('updated_at', 'desc')
+                ->limit(2000)
                 ->get();
+
+            // Jika masih kosong (prefix terlalu sempit), ambil fallback sample besar
+            if ($candidates->isEmpty()) {
+                $candidates = Anime::select($baseSelect)
+                    ->orderBy('updated_at', 'desc')
+                    ->limit(2000)
+                    ->get();
+            }
 
             $scored = $candidates->map(function ($anime) use ($needle) {
                 $title = Str::lower($anime->title);
