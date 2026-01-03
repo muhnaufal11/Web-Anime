@@ -37,7 +37,7 @@ class WatchController extends Controller
             );
         }
 
-        // Load only episodes of this anime that have active video servers
+        // Load only episodes of this anime that have active video servers for the sidebar list
         $animeEpisodes = $episode->anime->episodes()
             ->whereHas('videoServers', function ($q) {
                 $q->where('is_active', true);
@@ -48,13 +48,17 @@ class WatchController extends Controller
             ->orderBy('episode_number', 'asc')
             ->get();
 
-        // Determine previous/next episodes within the same anime that still have active servers
-        $prevEpisode = $animeEpisodes
+        // Use all episodes (regardless of server availability) to calculate prev/next navigation
+        $allEpisodes = $episode->anime->episodes()
+            ->orderBy('episode_number', 'asc')
+            ->get(['id', 'slug', 'episode_number']);
+
+        $prevEpisode = $allEpisodes
             ->where('episode_number', '<', $episode->episode_number)
             ->sortByDesc('episode_number')
             ->first();
 
-        $nextEpisode = $animeEpisodes
+        $nextEpisode = $allEpisodes
             ->where('episode_number', '>', $episode->episode_number)
             ->sortBy('episode_number')
             ->first();
