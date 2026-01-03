@@ -89,7 +89,7 @@
                             ← Sebelumnya
                         </span>
                     @else
-                        <a href="{{ $pagination->previousPageUrl() }}" class="px-4 py-2 rounded-lg bg-gray-900 text-white border border-purple-500/40 hover:bg-purple-600 hover:border-purple-400 transition-colors">
+                        <a href="{{ $pagination->previousPageUrl() }}" class="px-4 py-2 rounded-lg bg-gray-900 text-white border border-red-500/50 hover:bg-red-600 hover:border-red-400 transition-colors">
                             ← Sebelumnya
                         </a>
                     @endif
@@ -97,11 +97,11 @@
                     {{-- Page Numbers --}}
                     @foreach ($pagination->getUrlRange(1, $pagination->lastPage()) as $page => $url)
                         @if ($page == $pagination->currentPage())
-                            <span class="min-w-[42px] text-center px-3 py-2 rounded-lg bg-purple-600 text-white shadow-lg shadow-purple-600/30">
+                            <span class="min-w-[42px] text-center px-3 py-2 rounded-lg bg-red-600 text-white shadow-lg shadow-red-600/30">
                                 {{ $page }}
                             </span>
                         @else
-                            <a href="{{ $url }}" class="min-w-[42px] text-center px-3 py-2 rounded-lg bg-gray-900 text-gray-200 border border-white/10 hover:bg-gray-800 hover:text-white transition-colors">
+                            <a href="{{ $url }}" class="min-w-[42px] text-center px-3 py-2 rounded-lg bg-gray-900 text-gray-200 border border-white/10 hover:bg-gray-800 hover:text-white hover:border-red-500/40 transition-colors">
                                 {{ $page }}
                             </a>
                         @endif
@@ -109,7 +109,7 @@
 
                     {{-- Next Page Link --}}
                     @if ($pagination->hasMorePages())
-                        <a href="{{ $pagination->nextPageUrl() }}" class="px-4 py-2 rounded-lg bg-purple-600 text-white font-bold hover:bg-purple-500 transition-colors">
+                        <a href="{{ $pagination->nextPageUrl() }}" class="px-4 py-2 rounded-lg bg-red-600 text-white font-bold hover:bg-red-500 transition-colors">
                             Selanjutnya →
                         </a>
                     @else
