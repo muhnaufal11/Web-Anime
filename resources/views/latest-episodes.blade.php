@@ -81,15 +81,15 @@
 
         <!-- Pagination -->
         @if($pagination->hasPages())
-            <div class="flex justify-center mb-8">
-                <div class="flex gap-2">
+            <div class="flex justify-center mb-10">
+                <nav class="flex items-center gap-2 text-sm font-semibold">
                     {{-- Previous Page Link --}}
                     @if ($pagination->onFirstPage())
-                        <span class="px-4 py-2 text-gray-600 bg-gray-800/50 rounded-lg text-sm font-semibold cursor-not-allowed">
+                        <span class="px-4 py-2 rounded-lg bg-[#111318] text-gray-600 cursor-not-allowed">
                             ← Sebelumnya
                         </span>
                     @else
-                        <a href="{{ $pagination->previousPageUrl() }}" class="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg text-sm font-semibold transition-colors">
+                        <a href="{{ $pagination->previousPageUrl() }}" class="px-4 py-2 rounded-lg bg-gray-900 text-white border border-purple-500/40 hover:bg-purple-600 hover:border-purple-400 transition-colors">
                             ← Sebelumnya
                         </a>
                     @endif
@@ -97,11 +97,11 @@
                     {{-- Page Numbers --}}
                     @foreach ($pagination->getUrlRange(1, $pagination->lastPage()) as $page => $url)
                         @if ($page == $pagination->currentPage())
-                            <span class="px-4 py-2 text-white bg-red-600 rounded-lg text-sm font-semibold">
+                            <span class="min-w-[42px] text-center px-3 py-2 rounded-lg bg-purple-600 text-white shadow-lg shadow-purple-600/30">
                                 {{ $page }}
                             </span>
                         @else
-                            <a href="{{ $url }}" class="px-4 py-2 text-gray-300 bg-gray-800/50 hover:bg-gray-800 rounded-lg text-sm font-semibold transition-colors">
+                            <a href="{{ $url }}" class="min-w-[42px] text-center px-3 py-2 rounded-lg bg-gray-900 text-gray-200 border border-white/10 hover:bg-gray-800 hover:text-white transition-colors">
                                 {{ $page }}
                             </a>
                         @endif
@@ -109,15 +109,15 @@
 
                     {{-- Next Page Link --}}
                     @if ($pagination->hasMorePages())
-                        <a href="{{ $pagination->nextPageUrl() }}" class="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg text-sm font-semibold transition-colors">
+                        <a href="{{ $pagination->nextPageUrl() }}" class="px-4 py-2 rounded-lg bg-purple-600 text-white font-bold hover:bg-purple-500 transition-colors">
                             Selanjutnya →
                         </a>
                     @else
-                        <span class="px-4 py-2 text-gray-600 bg-gray-800/50 rounded-lg text-sm font-semibold cursor-not-allowed">
+                        <span class="px-4 py-2 rounded-lg bg-[#111318] text-gray-600 cursor-not-allowed">
                             Selanjutnya →
                         </span>
                     @endif
-                </div>
+                </nav>
             </div>
         @endif
     </div>
