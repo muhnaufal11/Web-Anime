@@ -1,6 +1,41 @@
 @extends('layouts.app')
 
 @section('title', 'Episode Terbaru - NIPNIME')
+@section('meta_description', 'Episode terbaru anime subtitle Indonesia di nipnime. Temukan rilis paling baru dan lanjutkan menonton dengan mudah.')
+@section('canonical', request()->fullUrl())
+@if($pagination->previousPageUrl())
+    @section('prev_url', $pagination->previousPageUrl())
+@endif
+@if($pagination->nextPageUrl())
+    @section('next_url', $pagination->nextPageUrl())
+@endif
+@section('og_image', asset('images/logo.png'))
+@push('structured-data')
+<script type="application/ld+json">
+{!! json_encode([
+    '@context' => 'https://schema.org',
+    '@type' => 'ItemList',
+    'name' => 'Episode Terbaru',
+    'itemListOrder' => 'https://schema.org/ItemListOrderDescending',
+    'itemListElement' => collect($latestEpisodes)->values()->map(function ($anime, $index) {
+        $episode = $anime->episodes->first();
+        return [
+            '@type' => 'ListItem',
+            'position' => $index + 1,
+            'url' => route('watch', $episode),
+            'item' => [
+                '@type' => 'Episode',
+                'name' => $anime->title . ' Episode ' . $episode->episode_number,
+                'partOfSeries' => $anime->title,
+                'episodeNumber' => $episode->episode_number,
+                'url' => route('watch', $episode),
+                'image' => $anime->poster_image ? asset('storage/' . $anime->poster_image) : asset('images/placeholder.png'),
+            ],
+        ];
+    }),
+], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT) !!}
+</script>
+@endpush
 
 @section('content')
 <div class="min-h-screen bg-gradient-to-b from-[#0f1115] via-[#0a0d13] to-black">

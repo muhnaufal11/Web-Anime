@@ -14,6 +14,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\AnimeRequestController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\SitemapController;
 
 /*
 |--------------------------------------------------------------------------
@@ -33,6 +34,7 @@ Route::get('/latest-episodes', [HomeController::class, 'latestEpisodes'])->name(
 Route::get('/schedule', [ScheduleController::class, 'index'])->name('schedule');
 Route::get('/anime/{anime:slug}', [DetailController::class, 'show'])->name('detail');
 Route::get('/watch/{episode:slug}', [WatchController::class, 'show'])->name('watch');
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 
 // Legal Pages
 Route::get('/dmca', [PageController::class, 'dmca'])->name('dmca');

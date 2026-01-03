@@ -1,10 +1,44 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="scroll-smooth" data-theme="dark">
 <head>
+    @php
+        $pageTitle = trim($__env->yieldContent('title'));
+        $fullTitle = $pageTitle ? $pageTitle . ' - nipnime' : 'nipnime';
+        $metaDescription = trim($__env->yieldContent('meta_description', 'Nonton anime subtitle Indonesia dengan koleksi episode terbaru setiap hari di nipnime.'));
+        $canonicalUrl = trim($__env->yieldContent('canonical', url()->current()));
+    @endphp
+
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title') - nipnime</title>
+    <title>{{ $fullTitle }}</title>
+    <meta name="description" content="{{ $metaDescription }}">
+
+    <link rel="canonical" href="{{ $canonicalUrl }}">
+    @hasSection('prev_url')
+        <link rel="prev" href="@yield('prev_url')">
+    @endif
+    @hasSection('next_url')
+        <link rel="next" href="@yield('next_url')">
+    @endif
+
+    <meta property="og:site_name" content="nipnime">
+    <meta property="og:title" content="{{ trim($__env->yieldContent('og_title', $fullTitle)) }}">
+    <meta property="og:description" content="{{ $metaDescription }}">
+    <meta property="og:url" content="{{ $canonicalUrl }}">
+    <meta property="og:type" content="@yield('og_type', 'website')">
+    @hasSection('og_image')
+        <meta property="og:image" content="@yield('og_image')">
+    @endif
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ trim($__env->yieldContent('twitter_title', $fullTitle)) }}">
+    <meta name="twitter:description" content="{{ $metaDescription }}">
+    @hasSection('twitter_image')
+        <meta name="twitter:image" content="@yield('twitter_image')">
+    @elseif(View::hasSection('og_image'))
+        <meta name="twitter:image" content="@yield('og_image')">
+    @endif
     
     <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
     <link rel="apple-touch-icon" href="{{ asset('images/logo.png') }}">
@@ -25,6 +59,8 @@
     
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
+    @stack('head')
+    @stack('structured-data')
 </head>
 <body class="antialiased theme-body font-['Inter']">
     

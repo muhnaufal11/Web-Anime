@@ -1,5 +1,35 @@
 @extends('layouts.app')
 @section('title', 'Nonton ' . $episode->anime->title . ' Ep ' . $episode->episode_number)
+@php
+    $episodeDescription = \Illuminate\Support\Str::limit(strip_tags($episode->description ?: $episode->anime->synopsis), 150);
+    $poster = $episode->anime->poster_image ? asset('storage/' . $episode->anime->poster_image) : asset('images/placeholder.png');
+@endphp
+@section('meta_description', $episodeDescription)
+@section('canonical', route('watch', $episode))
+@section('og_type', 'video.episode')
+@section('og_image', $poster)
+@push('structured-data')
+<script type="application/ld+json">
+{!! json_encode([
+    '@context' => 'https://schema.org',
+    '@type' => 'Episode',
+    'name' => $episode->anime->title . ' Episode ' . $episode->episode_number,
+    'description' => $episodeDescription,
+    'episodeNumber' => $episode->episode_number,
+    'partOfSeries' => [
+        '@type' => 'TVSeries',
+        'name' => $episode->anime->title,
+        'url' => route('detail', $episode->anime),
+    ],
+    'url' => route('watch', $episode),
+    'image' => $poster,
+    'potentialAction' => [
+        '@type' => 'WatchAction',
+        'target' => route('watch', $episode),
+    ],
+], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT) !!}
+</script>
+@endpush
 
 @section('content')
 <div class="max-w-7xl mx-auto px-4 py-4 sm:py-8">

@@ -1,6 +1,32 @@
 @extends('layouts.app')
 
 @section('title', $anime->title)
+@php
+    $detailDescription = \Illuminate\Support\Str::limit(strip_tags($anime->synopsis), 150);
+    $poster = $anime->poster_image ? asset('storage/' . $anime->poster_image) : asset('images/placeholder.png');
+@endphp
+@section('meta_description', $detailDescription)
+@section('canonical', route('detail', $anime))
+@section('og_type', 'video.tv_show')
+@section('og_image', $poster)
+@push('structured-data')
+<script type="application/ld+json">
+{!! json_encode([
+    '@context' => 'https://schema.org',
+    '@type' => 'TVSeries',
+    'name' => $anime->title,
+    'description' => $detailDescription,
+    'image' => $poster,
+    'genre' => $anime->genres->pluck('name')->values(),
+    'numberOfEpisodes' => $anime->episodes->count(),
+    'url' => route('detail', $anime),
+    'potentialAction' => [
+        '@type' => 'WatchAction',
+        'target' => route('watch', optional($anime->episodes->first())),
+    ],
+], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT) !!}
+</script>
+@endpush
 
 @section('content')
     <!-- Hero Section -->
