@@ -150,27 +150,44 @@ class HomeController extends Controller
                         }
                     }
                     
-                    // Method 2: SOUNDEX matching (untuk typo fonetik)
-                    // Cocok untuk kata-kata yang terdengar mirip
+                    // Method 2: Partial match - potong huruf terakhir (toleransi 1-2 huruf)
+                    // Ini akan menangani "lifi" -> "lif" yang bisa match "life"
                     foreach ($searchWords as $word) {
                         if (strlen($word) >= 3) {
-                            $q->orWhereRaw('SOUNDEX(title) = SOUNDEX(?)', [$word]);
-                        }
-                    }
-                    
-                    // Method 3: Partial match - potong huruf terakhir (toleransi 1-2 huruf)
-                    foreach ($searchWords as $word) {
-                        if (strlen($word) >= 4) {
                             $partial = substr($word, 0, -1); // Buang 1 huruf terakhir
                             $q->orWhere('title', 'like', "%{$partial}%");
                         }
-                        if (strlen($word) >= 5) {
+                        if (strlen($word) >= 4) {
                             $partial = substr($word, 0, -2); // Buang 2 huruf terakhir
                             $q->orWhere('title', 'like', "%{$partial}%");
                         }
                     }
                     
-                    // Method 4: Gabungan kata tanpa spasi
+                    // Method 3: Potong huruf pertama (toleransi typo di awal kata)
+                    foreach ($searchWords as $word) {
+                        if (strlen($word) >= 4) {
+                            $partial = substr($word, 1); // Buang 1 huruf pertama
+                            $q->orWhere('title', 'like', "%{$partial}%");
+                        }
+                    }
+                    
+                    // Method 4: Ganti huruf umum yang sering typo (i<->e, a<->e, dll)
+                    foreach ($searchWords as $word) {
+                        if (strlen($word) >= 3) {
+                            // i -> e (lifi -> life)
+                            $variation = str_replace('i', 'e', $word);
+                            if ($variation !== $word) {
+                                $q->orWhere('title', 'like', "%{$variation}%");
+                            }
+                            // e -> i
+                            $variation = str_replace('e', 'i', $word);
+                            if ($variation !== $word) {
+                                $q->orWhere('title', 'like', "%{$variation}%");
+                            }
+                        }
+                    }
+                    
+                    // Method 5: Gabungan kata tanpa spasi
                     $noSpace = str_replace(' ', '', $searchLower);
                     if (strlen($noSpace) >= 3) {
                         $q->orWhereRaw('LOWER(REPLACE(title, " ", "")) LIKE ?', ["%{$noSpace}%"]);
