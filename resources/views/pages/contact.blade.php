@@ -124,7 +124,7 @@
                         </div>
                         <span class="text-gray-300">Twitter/X</span>
                     </a>
-                    <a href="#" class="flex items-center gap-3 p-3 bg-white/5 rounded-xl hover:bg-white/10 transition">
+                    <a href="https://discord.gg/sYfq6Pyrrr" target="_blank" rel="noopener" class="flex items-center gap-3 p-3 bg-white/5 rounded-xl hover:bg-white/10 transition">
                         <div class="w-10 h-10 bg-indigo-500/20 rounded-lg flex items-center justify-center text-xl">
                             🎮
                         </div>

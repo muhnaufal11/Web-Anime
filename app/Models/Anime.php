@@ -9,6 +9,12 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Anime extends Model
 {
+    // Genre yang di-blur dan diblokir total (18+ strict)
+    public const ADULT_GENRES = ['hentai'];
+    
+    // Genre yang perlu warning tapi tidak di-blur
+    public const WARNING_GENRES = ['ecchi'];
+    
     protected $fillable = [
         'title',
         'slug',
@@ -72,5 +78,77 @@ class Anime extends Model
     public function getRouteKeyName(): string
     {
         return 'slug';
+    }
+
+    /**
+     * Check if this anime is adult content (18+)
+     */
+    public function isAdultContent(): bool
+    {
+        return $this->genres()
+            ->whereIn('slug', self::ADULT_GENRES)
+            ->exists();
+    }
+
+    /**
+     * Check if current user can view this anime content
+     * Returns true if:
+     * - Anime is not adult content, OR
+     * - User is logged in AND 18+
+     */
+    public function canUserView(): bool
+    {
+        // Not adult content = anyone can view
+        if (!$this->isAdultContent()) {
+            return true;
+        }
+
+        // Adult content - check user age
+        $user = auth()->user();
+        
+        // Not logged in = cannot view adult content
+        if (!$user) {
+            return false;
+        }
+
+        // Check if user is 18+
+        return $user->isAdult();
+    }
+
+    /**
+     * Check if poster should be blurred for current user
+     */
+    public function shouldBlurPoster(): bool
+    {
+        return $this->isAdultContent() && !$this->canUserView();
+    }
+
+    /**
+     * Check if this anime has ecchi content (needs warning but not blocked)
+     */
+    public function isEcchiContent(): bool
+    {
+        return $this->genres()
+            ->whereIn('slug', self::WARNING_GENRES)
+            ->exists();
+    }
+
+    /**
+     * Check if anime needs a warning before playing
+     * (Ecchi content or adult content that user CAN view)
+     */
+    public function needsWarning(): bool
+    {
+        // Ecchi always needs warning
+        if ($this->isEcchiContent()) {
+            return true;
+        }
+        
+        // Adult content that user can view also needs warning
+        if ($this->isAdultContent() && $this->canUserView()) {
+            return true;
+        }
+        
+        return false;
     }
 }

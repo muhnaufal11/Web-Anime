@@ -26,11 +26,11 @@
                 <div class="flex gap-2 sm:gap-4 flex-wrap">
                     <a href="{{ route('detail', $featuredAnimes[0]) }}" class="px-4 sm:px-8 py-2 sm:py-4 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-black rounded-lg sm:rounded-xl transition-all transform hover:scale-105 hover:shadow-xl hover:shadow-red-600/40 flex items-center gap-2 uppercase tracking-wide shadow-lg text-xs sm:text-base">
                         <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/></svg>
-                        <span class="hidden sm:inline">Tonton Sekarang</span>
-                        <span class="sm:hidden">Tonton</span>
+                        <span class="hidden sm:inline">{{ __('app.home.watch_now') }}</span>
+                        <span class="sm:hidden">{{ __('app.common.watch') }}</span>
                     </a>
                     <a href="{{ route('detail', $featuredAnimes[0]) }}" class="px-4 sm:px-8 py-2 sm:py-4 bg-white/10 hover:bg-white/20 border border-white/30 sm:border-2 text-white font-bold rounded-lg sm:rounded-xl transition-all backdrop-blur-sm uppercase tracking-wide text-xs sm:text-base">
-                        Detail
+                        {{ __('app.common.details') }}
                     </a>
                 </div>
                 <div class="flex items-center gap-4 sm:gap-6 mt-4 sm:mt-8 pt-4 sm:pt-8 border-t border-white/10 hidden sm:flex">
@@ -40,17 +40,22 @@
                     </div>
                     <div>
                         <span class="text-lg sm:text-2xl font-black text-white">{{ $featuredAnimes[0]->release_year }}</span>
-                        <p class="text-xs sm:text-sm text-gray-400">Tahun Rilis</p>
+                        <p class="text-xs sm:text-sm text-gray-400">{{ __('app.detail.release_year') }}</p>
                     </div>
                     <div>
                         <span class="text-lg sm:text-2xl font-black text-white">{{ $featuredAnimes[0]->episodes->count() }}</span>
-                        <p class="text-xs sm:text-sm text-gray-400">Episode</p>
+                        <p class="text-xs sm:text-sm text-gray-400">{{ __('app.detail.episodes') }}</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     @endif
+
+    <!-- Content Top Ad -->
+    <div class="max-w-7xl mx-auto px-4 pt-6">
+        <x-ad-slot position="content_top" page="home" />
+    </div>
 
     <div class="max-w-7xl mx-auto px-4 py-8 sm:py-16">
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8">
@@ -65,12 +70,12 @@
                             <div class="flex items-center gap-3 sm:gap-4">
                                 <div class="w-1 sm:w-1.5 h-8 sm:h-10 bg-gradient-to-b from-purple-600 to-purple-700 rounded-full"></div>
                                 <div>
-                                    <h2 class="text-2xl sm:text-4xl font-black text-white uppercase tracking-tight">Lanjutkan Tonton</h2>
-                                    <p class="text-gray-400 text-xs sm:text-sm mt-1">Melanjutkan dari terakhir kali kamu nonton</p>
+                                    <h2 class="text-2xl sm:text-4xl font-black text-white uppercase tracking-tight">{{ __('app.home.continue_watching') }}</h2>
+                                    <p class="text-gray-400 text-xs sm:text-sm mt-1">{{ __('app.home.continue_watching_desc') }}</p>
                                 </div>
                             </div>
                             <a href="{{ route('watch-history') }}" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs sm:text-sm font-bold rounded-lg transition-colors whitespace-nowrap">
-                                Lihat Semua →
+                                {{ __('app.home.view_all') }} →
                             </a>
                         </div>
 
@@ -82,13 +87,23 @@
                                     // Calculate progress percentage accurately using duration
                                     $duration = $history->duration ?? 1440; // Default to 24 minutes if not set
                                     $progressPercent = $history->progress > 0 ? min(100, ($history->progress / $duration) * 100) : 0;
+                                    $shouldBlurCW = $anime->shouldBlurPoster();
                                 @endphp
-                                <a href="{{ route('watch', $episode) }}" class="group block">
+                                <a href="{{ $shouldBlurCW ? '#' : route('watch', $episode) }}" class="group block" @if($shouldBlurCW) onclick="event.preventDefault(); alert('Konten 18+ - Anda harus berusia minimal 18 tahun untuk mengakses.')" @endif>
                                     <div class="relative bg-[#1a1d24] rounded-2xl overflow-hidden border border-white/10 group-hover:border-purple-600/50 transition-all duration-300 shadow-lg">
                                         <div class="relative aspect-[3/4] overflow-hidden">
                                             <img src="{{ $anime->poster_image ? asset('storage/' . $anime->poster_image) : asset('images/placeholder.png') }}" 
                                                  alt="{{ $anime->title }}"
-                                                 class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 bg-gray-800">
+                                                 class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 bg-gray-800"
+                                                 style="{{ $shouldBlurCW ? 'filter: blur(20px); transform: scale(1.1);' : '' }}">
+                                            
+                                            @if($shouldBlurCW)
+                                            <!-- Adult Content Overlay -->
+                                            <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white z-10">
+                                                <span class="text-3xl font-black text-red-500">18+</span>
+                                                <span class="text-xs mt-1">Konten Dewasa</span>
+                                            </div>
+                                            @endif
                                             
                                             <!-- Overlay -->
                                             <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -124,9 +139,9 @@
                                             <div class="flex items-center justify-between mt-3 pt-3 border-t border-white/10">
                                                 <span class="text-[10px] text-gray-500 font-semibold">
                                                     @if($history->completed)
-                                                        ✓ Selesai
+                                                        ✓ {{ __('app.home.completed') }}
                                                     @else
-                                                        {{ number_format($progressPercent, 0) }}% ditonton
+                                                        {{ number_format($progressPercent, 0) }}% {{ __('app.home.watching') }}
                                                     @endif
                                                 </span>
                                                 <span class="text-[10px] text-gray-400 font-semibold">{{ $history->last_watched_at->diffForHumans() }}</span>
@@ -146,12 +161,12 @@
                         <div class="flex items-center gap-4">
                             <div class="w-1.5 h-10 bg-gradient-to-b from-red-600 to-red-700 rounded-full"></div>
                             <div>
-                                <h2 class="text-4xl font-black text-white uppercase tracking-tight">Episode Terbaru</h2>
-                                <p class="text-gray-400 text-sm mt-1">Koleksi episode terbaru dari anime favoritmu</p>
+                                <h2 class="text-4xl font-black text-white uppercase tracking-tight">{{ __('app.home.latest_episodes') }}</h2>
+                                <p class="text-gray-400 text-sm mt-1">{{ __('app.home.latest_episodes_desc') }}</p>
                             </div>
                         </div>
                         <a href="{{ route('latest-episodes') }}" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-lg transition-colors whitespace-nowrap">
-                            Lihat Semua →
+                            {{ __('app.home.view_all') }} →
                         </a>
                     </div>
                 </div>
@@ -161,13 +176,23 @@
                     @php $order = 0; @endphp
                     @foreach($latestEpisodes as $anime)
                         @foreach($anime->episodes as $episode)
+                        @php $shouldBlur = $anime->shouldBlurPoster(); @endphp
                         <!-- Debug Order: {{ ++$order }}. {{ $anime->title }} -->
-                        <a href="{{ route('watch', $episode) }}" class="group block">
+                        <a href="{{ $shouldBlur ? '#' : route('watch', $episode) }}" class="group block" @if($shouldBlur) onclick="event.preventDefault(); alert('Konten 18+ - Anda harus login dan berusia minimal 18 tahun untuk mengakses.')" @endif>
                             <div class="relative bg-[#1a1d24] rounded-2xl overflow-hidden border border-white/10 group-hover:border-red-600/50 transition-all duration-300 shadow-lg">
                                 <div class="relative aspect-[3/4] overflow-hidden">
                                     <img src="{{ $anime->poster_image ? asset('storage/' . $anime->poster_image) : asset('images/placeholder.png') }}" 
                                          alt="{{ $anime->title }}"
-                                         class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 bg-gray-800">
+                                         class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 bg-gray-800"
+                                         style="{{ $shouldBlur ? 'filter: blur(20px); transform: scale(1.1);' : '' }}">
+                                    
+                                    @if($shouldBlur)
+                                    <!-- Adult Content Overlay -->
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white z-10">
+                                        <span class="text-3xl font-black text-red-500">18+</span>
+                                        <span class="text-xs mt-1">Konten Dewasa</span>
+                                    </div>
+                                    @endif
                                     
                                     <!-- Overlay -->
                                     <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -201,7 +226,7 @@
                                 <div class="p-4 bg-gradient-to-b from-[#1a1d24] to-[#0f1115]">
                                     <h3 class="text-white font-bold text-sm line-clamp-2 group-hover:text-red-500 transition-colors min-h-[2.5rem]">{{ $anime->title }}</h3>
                                     <div class="flex items-center justify-between mt-3 pt-3 border-t border-white/10">
-                                        <span class="text-[10px] text-gray-500 font-semibold italic">Sub Indo</span>
+                                        <span class="text-[10px] text-gray-500 font-semibold italic">{{ __('app.common.sub_indo') }}</span>
                                         <span class="text-[10px] text-yellow-500 font-black">★ {{ number_format($anime->rating, 1) }}</span>
                                     </div>
                                 </div>
@@ -214,15 +239,18 @@
 
             <!-- Sidebar -->
             <aside class="space-y-8">
+                <!-- Sidebar Top Ad -->
+                <x-ad-slot position="sidebar_top" page="home" />
+                
                 <!-- Discord Box -->
                 <div class="bg-gradient-to-br from-[#5865F2]/20 to-[#4752C4]/20 border-2 border-[#5865F2]/50 rounded-3xl p-8 backdrop-blur-xl relative overflow-hidden group hover:border-[#5865F2] transition-all">
                     <div class="absolute -right-8 -bottom-8 w-32 h-32 bg-[#5865F2]/10 rounded-full blur-3xl group-hover:scale-150 transition-transform"></div>
                     <div class="relative z-10">
                         <div class="text-4xl mb-4">💬</div>
-                        <h3 class="text-2xl font-black text-white mb-3">JOIN DISCORD</h3>
-                        <p class="text-gray-300 text-sm mb-6 leading-relaxed">Dapatkan update tercepat, share review, dan request anime favoritmu langsung dengan komunitas!</p>
-                        <a href="#" class="inline-block w-full py-3 bg-gradient-to-r from-[#5865F2] to-[#4752C4] text-white font-bold rounded-xl hover:shadow-lg hover:shadow-[#5865F2]/30 transition-all uppercase tracking-wide text-center font-black text-sm">
-                            Gabung Komunitas
+                        <h3 class="text-2xl font-black text-white mb-3">{{ __('app.discord.title') }}</h3>
+                        <p class="text-gray-300 text-sm mb-6 leading-relaxed">{{ __('app.discord.description') }}</p>
+                        <a href="https://discord.gg/sYfq6Pyrrr" target="_blank" rel="noopener" class="inline-block w-full py-3 bg-gradient-to-r from-[#5865F2] to-[#4752C4] text-white font-bold rounded-xl hover:shadow-lg hover:shadow-[#5865F2]/30 transition-all uppercase tracking-wide text-center font-black text-sm">
+                            {{ __('app.discord.join') }}
                         </a>
                     </div>
                 </div>
@@ -231,15 +259,22 @@
                 <div class="bg-gradient-to-br from-[#1a1d24] to-[#0f1115] rounded-3xl p-8 border-2 border-white/10 hover:border-red-600/50 transition-all">
                     <div class="flex items-center gap-3 mb-8">
                         <div class="w-1.5 h-8 bg-gradient-to-b from-red-600 to-red-700 rounded-full"></div>
-                        <h3 class="text-2xl font-black text-white uppercase tracking-tight">Sedang Trending</h3>
+                        <h3 class="text-2xl font-black text-white uppercase tracking-tight">{{ __('app.home.trending') }}</h3>
                     </div>
                     <div class="space-y-4">
                         @foreach($popularAnimes as $index => $anime)
-                        <a href="{{ route('detail', $anime) }}" class="flex items-center gap-4 group p-3 rounded-xl hover:bg-white/5 transition-all">
+                        @php $shouldBlurTrending = $anime->shouldBlurPoster(); @endphp
+                        <a href="{{ $shouldBlurTrending ? '#' : route('detail', $anime) }}" class="flex items-center gap-4 group p-3 rounded-xl hover:bg-white/5 transition-all" @if($shouldBlurTrending) onclick="event.preventDefault(); alert('Konten 18+ - Anda harus login dan berusia minimal 18 tahun untuk mengakses.')" @endif>
                             <div class="relative flex-shrink-0">
                                 <img src="{{ $anime->poster_image ? asset('storage/' . $anime->poster_image) : asset('images/placeholder.png') }}" 
                                      alt="{{ $anime->title }}"
-                                     class="w-16 h-24 object-cover rounded-lg shadow-lg group-hover:shadow-xl group-hover:shadow-red-600/20 transition-all bg-gray-700">
+                                     class="w-16 h-24 object-cover rounded-lg shadow-lg group-hover:shadow-xl group-hover:shadow-red-600/20 transition-all bg-gray-700"
+                                     style="{{ $shouldBlurTrending ? 'filter: blur(15px); transform: scale(1.1);' : '' }}">
+                                @if($shouldBlurTrending)
+                                <div class="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
+                                    <span class="text-red-500 font-black text-sm">18+</span>
+                                </div>
+                                @endif
                                 <div class="absolute -top-3 -left-3 w-8 h-8 bg-gradient-to-br from-red-600 to-red-700 text-white text-xs font-black rounded-full flex items-center justify-center border-3 border-[#1a1d24] shadow-lg">
                                     {{ $index + 1 }}
                                 </div>
@@ -255,8 +290,16 @@
                         @endforeach
                     </div>
                 </div>
+                
+                <!-- Sidebar Bottom Ad -->
+                <x-ad-slot position="sidebar_bottom" page="home" />
             </aside>
         </div>
+    </div>
+    
+    <!-- Content Bottom Ad -->
+    <div class="max-w-7xl mx-auto px-4 pb-8">
+        <x-ad-slot position="content_bottom" page="home" />
     </div>
 </div>
 @endsection

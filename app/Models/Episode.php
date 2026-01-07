@@ -69,9 +69,52 @@ class Episode extends Model
             }
         });
         
+        // Discord notification moved to VideoServer::created
+        // So notification only fires when video server is actually added
+        
+        // Fix storage permissions after save
+        static::saved(function (Episode $episode) {
+            self::fixStoragePermissions();
+        });
+        
         static::deleting(function (Episode $episode) {
             $episode->videoServers()->delete();
         });
+    }
+    
+    /**
+     * Fix storage permissions for video files
+     */
+    public static function fixStoragePermissions(): void
+    {
+        $storagePath = storage_path('app/public');
+        if (is_dir($storagePath)) {
+            // Fix permissions recursively
+            @chmod($storagePath, 0777);
+            
+            // Fix videos folder specifically
+            $videosPath = $storagePath . '/videos';
+            if (is_dir($videosPath)) {
+                self::chmodRecursive($videosPath, 0777, 0777);
+            }
+        }
+    }
+    
+    /**
+     * Recursively chmod directories and files
+     */
+    private static function chmodRecursive(string $path, int $dirMode, int $fileMode): void
+    {
+        if (is_dir($path)) {
+            @chmod($path, $dirMode);
+            $items = scandir($path);
+            foreach ($items as $item) {
+                if ($item === '.' || $item === '..') continue;
+                self::chmodRecursive($path . '/' . $item, $dirMode, $fileMode);
+            }
+        } else {
+            @chmod($path, $fileMode);
+        }
     }
 
     /**

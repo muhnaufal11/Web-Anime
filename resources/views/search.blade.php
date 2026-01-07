@@ -1,5 +1,7 @@
 @extends('layouts.app')
-@section('title', 'Cari Anime')
+@section('title', 'Cari Anime - Filter Gratis')
+@section('meta_description', 'Cari dan filter anime dari ribuan koleksi nipnime. Gratis, subtitle Indonesia, streaming berkualitas tinggi.')
+@section('canonical', route('search'))
 
 @section('content')
 <div class="min-h-screen bg-gradient-to-b from-[#0f1115] via-[#0f1115] to-[#1a1d24]">
@@ -7,9 +9,9 @@
     <div class="max-w-7xl mx-auto px-4 py-8">
         <div class="mb-10">
             <h1 class="text-4xl md:text-5xl font-black text-white mb-2 uppercase tracking-tighter">
-                Temukan Anime Favoritmu
+                {{ __('app.search.title') }}
             </h1>
-            <p class="text-gray-400 text-lg">Jelajahi ribuan anime dengan filter yang fleksibel</p>
+            <p class="text-gray-400 text-lg">{{ __('app.search.subtitle') }}</p>
         </div>
     </div>
 
@@ -21,7 +23,7 @@
                     <div class="flex items-center justify-between mb-8">
                         <div class="flex items-center gap-3">
                             <div class="w-1 h-8 bg-gradient-to-b from-red-600 to-red-700 rounded-full"></div>
-                            <h3 class="text-2xl font-black text-white uppercase tracking-tight">Filter</h3>
+                            <h3 class="text-2xl font-black text-white uppercase tracking-tight">{{ __('app.search.filter') }}</h3>
                         </div>
                         @php
                             $activeFilters = collect(['search', 'genre', 'status', 'type', 'year'])->filter(fn($f) => request()->filled($f))->count();
@@ -34,19 +36,25 @@
                     <form action="{{ route('search') }}" method="GET" class="space-y-6">
                         <!-- Search Input -->
                         <div class="group">
-                            <label class="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 block group-focus-within:text-red-500 transition">🔍 Judul Anime</label>
+                            <label class="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 block group-focus-within:text-red-500 transition">🔍 {{ __('app.search.anime_title') }}</label>
                             <div class="relative">
-                                <input type="text" name="search" value="{{ request('search') }}" 
-                                    placeholder="Cari judul..." 
-                                    class="w-full bg-[#0f1115] border-2 border-white/10 text-white rounded-xl px-4 py-3 text-sm focus:border-red-600 focus:ring-2 focus:ring-red-600/20 transition-all placeholder-gray-600">
+                                <input type="text" id="searchInput" name="search" value="{{ request('search') }}" 
+                                    placeholder="{{ __('app.nav.search') }}" 
+                                    class="w-full bg-[#0f1115] border-2 border-white/10 text-white rounded-xl px-4 py-3 text-sm focus:border-red-600 focus:ring-2 focus:ring-red-600/20 transition-all placeholder-gray-600 autocomplete-input"
+                                    autocomplete="off">
+                                
+                                <!-- Autocomplete dropdown -->
+                                <div id="searchSuggestions" class="absolute top-full left-0 right-0 mt-2 bg-[#1a1d24] border-2 border-white/10 rounded-xl shadow-xl z-50 hidden max-h-96 overflow-y-auto">
+                                    <!-- Suggestions akan diisi via JavaScript -->
+                                </div>
                             </div>
                         </div>
 
                         <!-- Genre Select -->
                         <div class="group">
-                            <label class="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 block group-focus-within:text-red-500 transition">🎭 Genre</label>
+                            <label class="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 block group-focus-within:text-red-500 transition">🎭 {{ __('app.search.genre') }}</label>
                             <select name="genre" class="w-full bg-[#0f1115] border-2 border-white/10 text-white rounded-xl px-4 py-3 text-sm focus:border-red-600 focus:ring-2 focus:ring-red-600/20 transition-all appearance-none cursor-pointer" style="background-image: url('data:image/svg+xml;utf8,<svg fill=\"none\" stroke=\"%23888888\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 14l-7 7m0 0l-7-7m7 7V3\"></path></svg>'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.5em 1.5em; padding-right: 2.5rem;">
-                                <option value="" class="bg-[#1a1d24]">Semua Genre</option>
+                                <option value="" class="bg-[#1a1d24]">{{ __('app.search.all_genre') }}</option>
                                 @foreach($genres as $genre)
                                     <option value="{{ $genre->id }}" class="bg-[#1a1d24]" @selected(request('genre') == $genre->id)>{{ $genre->name }}</option>
                                 @endforeach
@@ -55,9 +63,9 @@
 
                         <!-- Status Select -->
                         <div class="group">
-                            <label class="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 block group-focus-within:text-red-500 transition">📊 Status</label>
+                            <label class="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 block group-focus-within:text-red-500 transition">📊 {{ __('app.search.status') }}</label>
                             <select name="status" class="w-full bg-[#0f1115] border-2 border-white/10 text-white rounded-xl px-4 py-3 text-sm focus:border-red-600 focus:ring-2 focus:ring-red-600/20 transition-all appearance-none cursor-pointer" style="background-image: url('data:image/svg+xml;utf8,<svg fill=\"none\" stroke=\"%23888888\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 14l-7 7m0 0l-7-7m7 7V3\"></path></svg>'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.5em 1.5em; padding-right: 2.5rem;">
-                                <option value="" class="bg-[#1a1d24]">Semua Status</option>
+                                <option value="" class="bg-[#1a1d24]">{{ __('app.search.all_status') }}</option>
                                 <option value="Ongoing" class="bg-[#1a1d24]" @selected(request('status') == 'Ongoing')>Ongoing</option>
                                 <option value="Completed" class="bg-[#1a1d24]" @selected(request('status') == 'Completed')>Completed</option>
                             </select>
@@ -65,9 +73,9 @@
 
                         <!-- Type Select -->
                         <div class="group">
-                            <label class="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 block group-focus-within:text-red-500 transition">📺 Tipe</label>
+                            <label class="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 block group-focus-within:text-red-500 transition">📺 {{ __('app.search.type') }}</label>
                             <select name="type" class="w-full bg-[#0f1115] border-2 border-white/10 text-white rounded-xl px-4 py-3 text-sm focus:border-red-600 focus:ring-2 focus:ring-red-600/20 transition-all appearance-none cursor-pointer" style="background-image: url('data:image/svg+xml;utf8,<svg fill=\"none\" stroke=\"%23888888\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 14l-7 7m0 0l-7-7m7 7V3\"></path></svg>'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.5em 1.5em; padding-right: 2.5rem;">
-                                <option value="" class="bg-[#1a1d24]">Semua Tipe</option>
+                                <option value="" class="bg-[#1a1d24]">{{ __('app.search.all_type') }}</option>
                                 <option value="TV" class="bg-[#1a1d24]" @selected(request('type') == 'TV')>TV</option>
                                 <option value="Movie" class="bg-[#1a1d24]" @selected(request('type') == 'Movie')>Movie</option>
                                 <option value="ONA" class="bg-[#1a1d24]" @selected(request('type') == 'ONA')>ONA</option>
@@ -76,9 +84,9 @@
 
                         <!-- Year Select -->
                         <div class="group">
-                            <label class="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 block group-focus-within:text-red-500 transition">📅 Tahun</label>
+                            <label class="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 block group-focus-within:text-red-500 transition">📅 {{ __('app.search.year') }}</label>
                             <select name="year" class="w-full bg-[#0f1115] border-2 border-white/10 text-white rounded-xl px-4 py-3 text-sm focus:border-red-600 focus:ring-2 focus:ring-red-600/20 transition-all appearance-none cursor-pointer" style="background-image: url('data:image/svg+xml;utf8,<svg fill=\"none\" stroke=\"%23888888\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 14l-7 7m0 0l-7-7m7 7V3\"></path></svg>'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.5em 1.5em; padding-right: 2.5rem;">
-                                <option value="" class="bg-[#1a1d24]">Semua Tahun</option>
+                                <option value="" class="bg-[#1a1d24]">{{ __('app.search.all_year') }}</option>
                                 @foreach($availableYears as $year)
                                     <option value="{{ $year }}" class="bg-[#1a1d24]" @selected(request('year') == $year)>{{ $year }}</option>
                                 @endforeach
@@ -87,13 +95,13 @@
 
                         <!-- Submit Button -->
                         <button type="submit" class="w-full py-4 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-black text-sm rounded-xl transition-all duration-300 shadow-lg shadow-red-600/30 hover:shadow-xl hover:shadow-red-600/40 uppercase tracking-wider transform hover:scale-[1.02] active:scale-95">
-                            ✓ Terapkan Filter
+                            ✓ {{ __('app.search.apply_filter') }}
                         </button>
 
                         <!-- Clear Filter -->
                         @if(request()->anyFilled(['search', 'genre', 'status', 'type', 'year', 'season']))
                             <a href="{{ route('search') }}" class="block w-full text-center py-3 border-2 border-gray-600 text-gray-400 hover:text-white hover:border-white font-bold text-xs uppercase tracking-widest rounded-xl transition-all duration-300">
-                                ✕ Hapus Semua Filter
+                                ✕ {{ __('app.search.clear_filter') }}
                             </a>
                         @endif
                     </form>
@@ -110,9 +118,10 @@
             <!-- Results Grid -->
             <div class="flex-1">
                 <div class="mb-8">
-                    <h2 class="text-3xl font-black text-white uppercase tracking-tight">Hasil Pencarian</h2>
+                    <h2 class="text-3xl font-black text-white uppercase tracking-tight">{{ __('app.search.results') }}</h2>
                     @if(request('search'))
-                        <p class="text-gray-400 mt-2">Pencarian: <span class="text-red-500 font-bold">{{ request('search') }}</span></p>
+                        <p class="text-gray-400 mt-2">{{ __('app.search.search_for') }}: <span class="text-red-500 font-bold">{{ request('search') }}</span></p>
+                        <p class="text-xs text-gray-500 mt-1">💡 {{ __('app.search.typo_support') }}</p>
                     @endif
                 </div>
 
@@ -127,7 +136,7 @@
                             </div>
                             <div class="flex-1">
                                 <p class="text-sm text-yellow-200">
-                                    <span class="font-medium">Apakah maksud Anda:</span>
+                                    <span class="font-medium">{{ __('app.search.did_you_mean') }}:</span>
                                     <a href="{{ route('search', ['search' => $didYouMean->title]) }}" 
                                        class="ml-2 text-yellow-400 hover:text-yellow-300 font-bold underline underline-offset-2 decoration-yellow-400/50 hover:decoration-yellow-300 transition-colors">
                                         {{ $didYouMean->title }}
@@ -137,7 +146,7 @@
                             </div>
                             <a href="{{ route('detail', $didYouMean) }}" 
                                class="flex-shrink-0 px-4 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 text-xs font-bold rounded-lg transition-colors border border-yellow-500/30">
-                                Lihat Anime
+                                {{ __('app.common.details') }}
                             </a>
                         </div>
                     </div>
@@ -158,13 +167,23 @@
                 @if($animes->count() > 0)
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 mb-12">
                         @foreach($animes as $anime)
-                            <a href="{{ route('detail', $anime) }}" class="group">
+                            @php $shouldBlurSearch = $anime->shouldBlurPoster(); @endphp
+                            <a href="{{ $shouldBlurSearch ? '#' : route('detail', $anime) }}" class="group" @if($shouldBlurSearch) onclick="event.preventDefault(); alert('Konten 18+ - Anda harus login dan berusia minimal 18 tahun untuk mengakses.')" @endif>
                                 <div class="relative overflow-hidden rounded-2xl bg-[#1a1d24] border border-white/10 group-hover:border-red-600/50 transition-all duration-300">
                                     <!-- Image Container -->
-                                    <div class="aspect-[3/4] overflow-hidden">
+                                    <div class="aspect-[3/4] overflow-hidden relative">
                                         <img src="{{ $anime->poster_image ? asset('storage/' . $anime->poster_image) : asset('images/placeholder.png') }}" 
                                              alt="{{ $anime->title }}"
-                                             class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500 bg-gray-800">
+                                             class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500 bg-gray-800"
+                                             style="{{ $shouldBlurSearch ? 'filter: blur(20px); transform: scale(1.1);' : '' }}">
+                                        
+                                        @if($shouldBlurSearch)
+                                        <!-- Adult Content Overlay -->
+                                        <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white z-10">
+                                            <span class="text-3xl font-black text-red-500">18+</span>
+                                            <span class="text-xs mt-1">Konten Dewasa</span>
+                                        </div>
+                                        @endif
                                         
                                         <!-- Overlay Gradient -->
                                         <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -213,12 +232,15 @@
                                 </svg>
                             </div>
                         </div>
-                        <h3 class="text-2xl font-black text-white mb-2">Anime tidak ditemukan</h3>
-                        <p class="text-gray-400 mb-6 max-w-md mx-auto">Coba cek ejaan judul atau pilih dari rekomendasi berikut.</p>
+                        <h3 class="text-2xl font-black text-white mb-2">Anime tidak ditemukan untuk "{{ request('search') }}"</h3>
+                        <p class="text-gray-400 mb-6 max-w-md mx-auto">
+                            💡 Sistem pencarian kami mendukung typo dan ejaan yang salah. 
+                            Coba dengan judul berbeda atau gunakan filter kategori.
+                        </p>
 
                         @if(isset($suggestions) && $suggestions->count() > 0)
                             <div class="bg-white/5 border border-white/10 rounded-2xl p-6 max-w-3xl mx-auto mb-6">
-                                <p class="text-sm text-gray-300 font-semibold mb-4">Mungkin yang kamu maksud:</p>
+                                <p class="text-sm text-gray-300 font-semibold mb-4">🎯 Mungkin yang kamu maksud:</p>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                     @foreach($suggestions as $suggestion)
                                         <a href="{{ route('detail', $suggestion) }}" class="group flex items-center gap-3 p-3 rounded-xl bg-[#0f1115] border border-white/10 hover:border-red-600/60 transition-all">
@@ -273,5 +295,187 @@
         background-size: 1.5em 1.5em;
         background-position: right 0.5rem center;
     }
+
+    /* Autocomplete styles */
+    #searchSuggestions {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    }
+
+    #searchSuggestions::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #searchSuggestions::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    #searchSuggestions::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+    }
+
+    .suggestion-item {
+        transition: all 0.2s;
+    }
+
+    .suggestion-item:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .suggestion-item.active {
+        background-color: rgba(239, 68, 68, 0.2);
+        border-left: 3px solid #ef4444;
+    }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const suggestionsContainer = document.getElementById('searchSuggestions');
+    let debounceTimer = null;
+    let selectedIndex = -1;
+    let suggestions = [];
+
+    // Fetch suggestions from API
+    function fetchSuggestions(query) {
+        if (query.length < 2) {
+            suggestionsContainer.classList.add('hidden');
+            return;
+        }
+
+        const apiUrl = `{{ route('search.suggestions') }}?q=${encodeURIComponent(query)}`;
+        console.log('Fetching suggestions from:', apiUrl);
+        
+        fetch(apiUrl)
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Suggestions received:', data);
+                suggestions = data.suggestions;
+                renderSuggestions(suggestions, query);
+            })
+            .catch(error => {
+                console.error('Error fetching suggestions:', error);
+                suggestionsContainer.classList.add('hidden');
+            });
+    }
+
+    // Render suggestions dropdown
+    function renderSuggestions(items, query) {
+        suggestionsContainer.innerHTML = '';
+
+        if (items.length === 0) {
+            const emptyState = document.createElement('div');
+            emptyState.className = 'p-4 text-center text-gray-400 text-sm';
+            emptyState.innerHTML = '❌ Tidak ada hasil untuk "<strong>' + escapeHtml(query) + '</strong>"<br><span class="text-xs text-gray-500 mt-2 block">Coba dengan judul berbeda atau gunakan filter</span>';
+            suggestionsContainer.appendChild(emptyState);
+            suggestionsContainer.classList.remove('hidden');
+            return;
+        }
+
+        items.forEach((anime, index) => {
+            const suggestion = document.createElement('a');
+            suggestion.href = anime.url;
+            suggestion.className = 'suggestion-item flex items-center gap-3 p-3 border-b border-white/10 hover:bg-white/5 cursor-pointer block last:border-b-0 transition-all';
+            suggestion.dataset.index = index;
+            
+            suggestion.innerHTML = `
+                <div class="w-12 h-16 rounded-lg overflow-hidden bg-gray-800 flex-shrink-0">
+                    <img src="${anime.poster_image}" alt="${escapeHtml(anime.title)}" class="w-full h-full object-cover">
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-white font-bold text-sm leading-tight line-clamp-2 truncate">${escapeHtml(anime.title)}</p>
+                    <div class="flex items-center gap-2 text-[11px] text-gray-400 mt-1">
+                        <span>${anime.release_year}</span>
+                        <span class="px-1.5 py-0.5 rounded bg-white/10 border border-white/20 uppercase font-black text-xs">${anime.type}</span>
+                        <span class="text-yellow-400 font-black">★ ${anime.rating}</span>
+                    </div>
+                </div>
+            `;
+
+            suggestion.addEventListener('click', function(e) {
+                e.preventDefault();
+                window.location.href = anime.url;
+            });
+
+            suggestionsContainer.appendChild(suggestion);
+        });
+
+        suggestionsContainer.classList.remove('hidden');
+        selectedIndex = -1;
+    }
+
+    // Handle input with debounce
+    searchInput.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        const query = this.value.trim();
+        
+        debounceTimer = setTimeout(() => {
+            fetchSuggestions(query);
+        }, 300);
+    });
+
+    // Keyboard navigation
+    searchInput.addEventListener('keydown', function(e) {
+        const items = suggestionsContainer.querySelectorAll('.suggestion-item');
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+            updateSelection(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            selectedIndex = Math.max(selectedIndex - 1, -1);
+            updateSelection(items);
+        } else if (e.key === 'Enter') {
+            if (selectedIndex >= 0 && selectedIndex < items.length) {
+                e.preventDefault();
+                items[selectedIndex].click();
+            }
+        } else if (e.key === 'Escape') {
+            suggestionsContainer.classList.add('hidden');
+        }
+    });
+
+    function updateSelection(items) {
+        items.forEach((item, index) => {
+            if (index === selectedIndex) {
+                item.classList.add('active');
+                item.scrollIntoView({ block: 'nearest' });
+            } else {
+                item.classList.remove('active');
+            }
+        });
+    }
+
+    // Close suggestions when clicking outside
+    document.addEventListener('click', function(e) {
+        if (e.target !== searchInput && !suggestionsContainer.contains(e.target)) {
+            suggestionsContainer.classList.add('hidden');
+        }
+    });
+
+    // Show suggestions on focus if input has value
+    searchInput.addEventListener('focus', function() {
+        if (this.value.trim().length >= 2) {
+            suggestionsContainer.classList.remove('hidden');
+        }
+    });
+
+    // Helper function to escape HTML
+    function escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, m => map[m]);
+    }
+});
+</script>
 @endsection

@@ -95,6 +95,7 @@ class AdminEpisodeLogResource extends Resource
                     ->options([
                         AdminEpisodeLog::STATUS_PENDING => 'Pending',
                         AdminEpisodeLog::STATUS_APPROVED => 'Approved',
+                        AdminEpisodeLog::STATUS_REJECTED => 'Rejected',
                         AdminEpisodeLog::STATUS_PAID => 'Paid',
                     ])
                     ->default(AdminEpisodeLog::STATUS_PENDING)
@@ -103,6 +104,11 @@ class AdminEpisodeLogResource extends Resource
                     ->label('Catatan')
                     ->rows(2)
                     ->nullable(),
+                Forms\Components\Textarea::make('rejection_reason')
+                    ->label('Alasan Penolakan')
+                    ->rows(2)
+                    ->nullable()
+                    ->visible(fn ($get) => $get('status') === AdminEpisodeLog::STATUS_REJECTED),
             ])->columns(2);
     }
 
@@ -187,18 +193,20 @@ class AdminEpisodeLogResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('amount')
                     ->label('Bayaran')
-                    ->money('IDR')
+                    ->formatStateUsing(fn ($state) => 'Rp ' . number_format($state, 0, ',', '.'))
                     ->sortable(),
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('Status')
                     ->colors([
                         'warning' => AdminEpisodeLog::STATUS_PENDING,
                         'info' => AdminEpisodeLog::STATUS_APPROVED,
+                        'danger' => AdminEpisodeLog::STATUS_REJECTED,
                         'success' => AdminEpisodeLog::STATUS_PAID,
                     ])
                     ->icons([
                         'heroicon-o-clock' => AdminEpisodeLog::STATUS_PENDING,
                         'heroicon-o-check-circle' => AdminEpisodeLog::STATUS_APPROVED,
+                        'heroicon-o-x-circle' => AdminEpisodeLog::STATUS_REJECTED,
                         'heroicon-o-currency-dollar' => AdminEpisodeLog::STATUS_PAID,
                     ])
                     ->sortable(),
@@ -209,6 +217,11 @@ class AdminEpisodeLogResource extends Resource
                 Tables\Columns\TextColumn::make('note')
                     ->label('Catatan')
                     ->limit(40)
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('rejection_reason')
+                    ->label('Alasan Reject')
+                    ->limit(40)
+                    ->color('danger')
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('user.bank_account_holder')
                     ->label('Atas Nama')
@@ -240,6 +253,7 @@ class AdminEpisodeLogResource extends Resource
                     ->options([
                         AdminEpisodeLog::STATUS_PENDING => 'Pending',
                         AdminEpisodeLog::STATUS_APPROVED => 'Approved',
+                        AdminEpisodeLog::STATUS_REJECTED => 'Rejected',
                         AdminEpisodeLog::STATUS_PAID => 'Paid',
                     ]),
                 Tables\Filters\SelectFilter::make('user_id')
@@ -254,6 +268,27 @@ class AdminEpisodeLogResource extends Resource
                     ->requiresConfirmation()
                     ->visible(fn (AdminEpisodeLog $record) => (auth()->user()?->isSuperAdmin() ?? false) && $record->status === AdminEpisodeLog::STATUS_PENDING)
                     ->action(fn (AdminEpisodeLog $record) => $record->update(['status' => AdminEpisodeLog::STATUS_APPROVED])),
+                Tables\Actions\Action::make('reject')
+                    ->label('Reject/Revisi')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Tolak/Revisi Episode')
+                    ->modalSubheading('Episode yang ditolak akan mempengaruhi Approval Rate admin.')
+                    ->form([
+                        Forms\Components\Textarea::make('rejection_reason')
+                            ->label('Alasan Penolakan')
+                            ->required()
+                            ->rows(3)
+                            ->placeholder('Jelaskan mengapa episode ini ditolak atau perlu direvisi...'),
+                    ])
+                    ->visible(fn (AdminEpisodeLog $record) => (auth()->user()?->isSuperAdmin() ?? false) && in_array($record->status, [AdminEpisodeLog::STATUS_PENDING, AdminEpisodeLog::STATUS_APPROVED]))
+                    ->action(function (AdminEpisodeLog $record, array $data) {
+                        $record->update([
+                            'status' => AdminEpisodeLog::STATUS_REJECTED,
+                            'rejection_reason' => $data['rejection_reason'],
+                        ]);
+                    }),
                 Tables\Actions\Action::make('markPaid')
                     ->label('Tandai Dibayar')
                     ->icon('heroicon-o-currency-dollar')
@@ -299,6 +334,31 @@ class AdminEpisodeLogResource extends Resource
                         $records->each(function ($record) {
                             if ($record->status === AdminEpisodeLog::STATUS_PENDING) {
                                 $record->update(['status' => AdminEpisodeLog::STATUS_APPROVED]);
+                            }
+                        });
+                    }),
+                Tables\Actions\BulkAction::make('reject')
+                    ->label('Reject/Revisi')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading(fn ($records) => 'Reject/Revisi (' . $records->count() . ' log)')
+                    ->modalSubheading('Episode yang ditolak akan mempengaruhi Approval Rate admin.')
+                    ->form([
+                        Forms\Components\Textarea::make('rejection_reason')
+                            ->label('Alasan Penolakan')
+                            ->required()
+                            ->rows(3)
+                            ->placeholder('Jelaskan mengapa episode ini ditolak atau perlu direvisi...'),
+                    ])
+                    ->visible(fn () => auth()->user()?->isSuperAdmin() ?? false)
+                    ->action(function ($records, array $data) {
+                        $records->each(function ($record) use ($data) {
+                            if (in_array($record->status, [AdminEpisodeLog::STATUS_PENDING, AdminEpisodeLog::STATUS_APPROVED])) {
+                                $record->update([
+                                    'status' => AdminEpisodeLog::STATUS_REJECTED,
+                                    'rejection_reason' => $data['rejection_reason'],
+                                ]);
                             }
                         });
                     }),

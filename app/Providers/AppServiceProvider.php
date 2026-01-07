@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
+use App\Models\AdminEpisodeLog;
+use App\Observers\AdminEpisodeLogObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,6 +26,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        // Register Observer for AdminEpisodeLog (real-time Discord updates)
+        AdminEpisodeLog::observe(AdminEpisodeLogObserver::class);
+
         // 1. INI LOGIKA BARU: Paksa HTTPS jika di Production
         if($this->app->environment('production')) {
             URL::forceScheme('https');

@@ -56,12 +56,22 @@
         <!-- Episodes Grid -->
         <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 mb-12">
             @forelse($latestEpisodes as $anime)
-                <a href="{{ route('watch', $anime->episodes->first()) }}" class="group block">
+                @php $shouldBlurLatest = $anime->shouldBlurPoster(); @endphp
+                <a href="{{ $shouldBlurLatest ? '#' : route('watch', $anime->episodes->first()) }}" class="group block" @if($shouldBlurLatest) onclick="event.preventDefault(); alert('Konten 18+ - Anda harus login dan berusia minimal 18 tahun untuk mengakses.')" @endif>
                     <div class="relative bg-[#1a1d24] rounded-2xl overflow-hidden border border-white/10 group-hover:border-red-600/50 transition-all duration-300 shadow-lg">
                         <div class="relative aspect-[3/4] overflow-hidden">
                             <img src="{{ $anime->poster_image ? asset('storage/' . $anime->poster_image) : asset('images/placeholder.png') }}" 
                                  alt="{{ $anime->title }}"
-                                 class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 bg-gray-800">
+                                 class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 bg-gray-800"
+                                 style="{{ $shouldBlurLatest ? 'filter: blur(20px); transform: scale(1.1);' : '' }}">
+                            
+                            @if($shouldBlurLatest)
+                            <!-- Adult Content Overlay -->
+                            <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white z-10">
+                                <span class="text-3xl font-black text-red-500">18+</span>
+                                <span class="text-xs mt-1">Konten Dewasa</span>
+                            </div>
+                            @endif
                             
                             <!-- Overlay -->
                             <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>

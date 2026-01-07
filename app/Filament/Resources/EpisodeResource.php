@@ -51,9 +51,10 @@ class EpisodeResource extends Resource
                             ->required(),
                     ]),
 
-                // --- BAGIAN 2: VIDEO SERVERS MANAGER (FITUR BARU UNTUK ADMIN) ---
+                // --- BAGIAN 2: VIDEO SERVERS MANAGER (HANYA UNTUK ADMIN UPLOAD & SUPERADMIN) ---
                 Forms\Components\Section::make('Video Servers (Manual & Upload)')
-                    ->description('Kelola link video manual atau paste nama file dari FileBrowser (Upload Center).')
+                    ->description('Kelola link video manual atau pilih file dari FileBrowser (Upload Center).')
+                    ->visible(fn () => auth()->user()?->canUploadVideo())
                     ->schema([
                         Forms\Components\Repeater::make('videoServers')
                             ->relationship()
@@ -63,39 +64,67 @@ class EpisodeResource extends Resource
                                     ->default('Server Admin')
                                     ->required(),
 
-                                // KOLOM PINTAR: Paste Nama File Disini
-                                Forms\Components\TextInput::make('manual_filename')
-                                    ->label('Paste Nama File Video')
-                                    ->placeholder('Contoh: naruto-ep1.mp4')
-                                    ->helperText('Ambil nama file dari FileBrowser (Port :8081).')
-                                    ->dehydrated(false) // Tidak disimpan ke database, cuma alat bantu
+                                // DROPDOWN PILIH FILE VIDEO
+                                Forms\Components\Select::make('manual_filename')
+                                    ->label('Pilih File Video')
+                                    ->placeholder('-- Pilih file video --')
+                                    ->options(function () {
+                                        // Ambil daftar file dari folder videos/episodes
+                                        $files = [];
+                                        $path = storage_path('app/public/videos/episodes');
+                                        
+                                        if (is_dir($path)) {
+                                            // Gunakan scandir karena GLOB_BRACE tidak ada di Alpine
+                                            $allFiles = scandir($path);
+                                            $extensions = ['mp4', 'mkv', 'webm'];
+                                            
+                                            foreach ($allFiles as $file) {
+                                                if ($file === '.' || $file === '..') continue;
+                                                
+                                                $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+                                                if (in_array($ext, $extensions)) {
+                                                    $fullPath = $path . '/' . $file;
+                                                    $size = round(filesize($fullPath) / 1024 / 1024, 1); // MB
+                                                    $files[$file] = "{$file} ({$size} MB)";
+                                                }
+                                            }
+                                            // Sort by filename
+                                            ksort($files);
+                                        }
+                                        
+                                        return $files;
+                                    })
+                                    ->searchable()
+                                    ->helperText('Pilih video yang sudah di-upload via FileBrowser.')
+                                    ->dehydrated(false)
                                     ->reactive()
                                     ->afterStateUpdated(function ($state, callable $set) {
-                                        // LOGIC OTOMATIS: Ubah nama file jadi URL
                                         if ($state) {
-                                            // Asumsi file ada di folder 'videos/episodes/'
-                                            // Pastikan admin upload ke folder 'videos/episodes' di FileBrowser
                                             $url = Storage::disk('public')->url('videos/episodes/' . $state);
                                             $set('embed_url', $url);
                                         }
                                     })
-                                    // TOMBOL PINTAS KE FILEBROWSER
                                     ->suffixAction(
                                         Forms\Components\Actions\Action::make('open_filebrowser')
                                             ->icon('heroicon-o-external-link')
-                                            ->url('http://192.168.100.13:8081', true) // IP FileBrowser
-                                            ->tooltip('Buka FileBrowser Upload Center')
+                                            ->url('http://192.168.100.13:8081', true)
+                                            ->tooltip('Buka FileBrowser untuk upload video baru')
                                     ),
 
                                 Forms\Components\TextInput::make('embed_url')
                                     ->label('URL Video Final')
                                     ->required()
                                     ->columnSpan('full')
-                                    ->helperText('Terisi otomatis jika mengisi nama file di atas.'),
+                                    ->helperText('Terisi otomatis jika memilih file di atas.'),
                                 
                                 Forms\Components\Toggle::make('is_active')
                                     ->label('Aktif')
                                     ->default(true),
+                                    
+                                Forms\Components\Toggle::make('is_default')
+                                    ->label('Default Server')
+                                    ->helperText('Server yang dipilih pertama kali')
+                                    ->default(false),
                             ])
                             ->createItemButtonLabel('Tambah Server Manual')
                             ->defaultItems(0)
@@ -123,11 +152,43 @@ class EpisodeResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make(),
                 
-                // ACTION UPLOAD LOKAL (JANGAN DIUBAH - SUDAH WORK)
+                // ACTION SET DEFAULT SERVER
+                Tables\Actions\Action::make('set_default_server')
+                    ->label('Set Default')
+                    ->icon('heroicon-o-star')
+                    ->color('warning')
+                    ->form([
+                        Forms\Components\Select::make('server_id')
+                            ->label('Pilih Server Default')
+                            ->options(function (Episode $record) {
+                                return $record->videoServers()
+                                    ->where('is_active', true)
+                                    ->pluck('server_name', 'id');
+                            })
+                            ->required()
+                            ->helperText('Server ini akan dipilih pertama kali saat user membuka video'),
+                    ])
+                    ->action(function (Episode $record, array $data) {
+                        // Reset all servers
+                        $record->videoServers()->update(['is_default' => false]);
+                        
+                        // Set selected as default
+                        \App\Models\VideoServer::where('id', $data['server_id'])
+                            ->update(['is_default' => true]);
+                        
+                        \Filament\Notifications\Notification::make()
+                            ->title('Default server updated')
+                            ->success()
+                            ->send();
+                    })
+                    ->visible(fn (Episode $record) => $record->videoServers()->where('is_active', true)->count() > 0),
+                
+                // ACTION UPLOAD LOKAL (HANYA ADMIN UPLOAD & SUPERADMIN)
                 Tables\Actions\Action::make('upload_local')
                     ->label('Upload Video Lokal')
                     ->icon('heroicon-o-upload')
                     ->color('primary')
+                    ->visible(fn () => auth()->user()?->canUploadVideo())
                     ->form([
                         Forms\Components\View::make('filament.components.upload-progress')
                             ->viewData(['target' => 'video_files']),
@@ -178,24 +239,26 @@ class EpisodeResource extends Resource
                                 [
                                     'embed_url' => $url,
                                     'is_active' => true,
+                                    'source' => 'manual',
                                 ]
                             );
 
                             if ($vs->wasRecentlyCreated) { $created++; } else { $updated++; }
                         }
 
-                        // Admin log when a local upload happens
-                        $user = auth()->user();
+                        // Admin log when a local upload happens - BAYARAN SESUAI RATE USER
+                        $user = auth()->user()?->refresh();
                         if ($user && $user->isAdmin()) {
+                            $rate = $user->payment_rate ?? 500;
                             \App\Models\AdminEpisodeLog::updateOrCreate(
                                 [
                                     'user_id' => $user->id,
                                     'episode_id' => $record->id,
                                 ],
                                 [
-                                    'amount' => \App\Models\AdminEpisodeLog::DEFAULT_AMOUNT,
+                                    'amount' => $rate,
                                     'status' => \App\Models\AdminEpisodeLog::STATUS_PENDING,
-                                    'note' => 'Upload video internal (' . $serverName . ')',
+                                    'note' => 'Upload video manual (' . $serverName . ') - Rp ' . number_format($rate, 0, ',', '.'),
                                 ]
                             );
                         }
@@ -207,16 +270,22 @@ class EpisodeResource extends Resource
                             ->send();
                     }),
                 
-                // ACTION SYNC SERVERS (JANGAN DIUBAH - SUDAH WORK)
+                // ACTION SYNC SERVERS (HANYA ADMIN SYNC & SUPERADMIN)
                 Tables\Actions\Action::make('sync_servers')
                     ->label('Sync Servers')
                     ->icon('heroicon-o-link')
                     ->color('success')
+                    ->visible(fn () => auth()->user()?->canSyncServer())
                     ->form([
+                        Forms\Components\TextInput::make('episode_url')
+                            ->label('URL Episode (opsional)')
+                            ->url()
+                            ->placeholder('https://nontonanimeid.boats/episode/...')
+                            ->helperText('Masukkan URL episode untuk fetch server via AJAX (NontonAnimeID)'),
                         Forms\Components\Textarea::make('episode_html')
                             ->label('Episode HTML (opsional)')
-                            ->rows(8)
-                            ->placeholder('Paste HTML halaman episode untuk parsing tanpa jaringan'),
+                            ->rows(6)
+                            ->placeholder('Atau paste HTML halaman episode untuk parsing offline'),
                         Forms\Components\FileUpload::make('episode_html_file')
                             ->label('Upload Episode HTML (opsional)')
                             ->acceptedFileTypes(['text/html','text/plain'])
@@ -230,7 +299,68 @@ class EpisodeResource extends Resource
                     ->action(function (Episode $record, array $data) {
                         $service = app(\App\Services\AnimeSailService::class);
 
+                        // Prioritas: URL > HTML paste > HTML file
+                        $url = $data['episode_url'] ?? null;
                         $html = null;
+                        $servers = [];
+                        
+                        // Method 1: Fetch dari URL (AJAX)
+                        if (!empty($url)) {
+                            if (str_contains($url, 'nontonanimeid')) {
+                                try {
+                                    $fetcher = new \App\Services\NontonAnimeIdFetcher();
+                                    $result = $fetcher->syncToEpisode($record->id, $url, !empty($data['delete_existing']));
+                                    
+                                    if ($result['success']) {
+                                        // --- AUTO CREATE ADMIN LOG ---
+                                        $user = auth()->user()?->refresh();
+                                        if ($user && $user->isAdmin() && ($result['created'] > 0 || $result['updated'] > 0)) {
+                                            $rate = $user->payment_rate ?? 500;
+                                            \App\Models\AdminEpisodeLog::updateOrCreate(
+                                                [
+                                                    'user_id' => $user->id,
+                                                    'episode_id' => $record->id,
+                                                ],
+                                                [
+                                                    'amount' => $rate,
+                                                    'status' => \App\Models\AdminEpisodeLog::STATUS_PENDING,
+                                                    'note' => "Sync via URL (Created: {$result['created']}, Updated: {$result['updated']}) - Rp " . number_format($rate, 0, ',', '.'),
+                                                ]
+                                            );
+                                        }
+                                        
+                                        \Filament\Notifications\Notification::make()
+                                            ->title('Sync berhasil!')
+                                            ->success()
+                                            ->body("Created: {$result['created']} | Updated: {$result['updated']} | Total: {$result['total']}")
+                                            ->send();
+                                    } else {
+                                        \Filament\Notifications\Notification::make()
+                                            ->title('Fetch gagal')
+                                            ->danger()
+                                            ->body($result['error'])
+                                            ->send();
+                                    }
+                                    return;
+                                } catch (\Exception $e) {
+                                    \Filament\Notifications\Notification::make()
+                                        ->title('Error')
+                                        ->danger()
+                                        ->body('Fetch URL gagal: ' . $e->getMessage())
+                                        ->send();
+                                    return;
+                                }
+                            } else {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('URL tidak didukung')
+                                    ->danger()
+                                    ->body('Saat ini hanya NontonAnimeID yang didukung untuk fetch via URL.')
+                                    ->send();
+                                return;
+                            }
+                        }
+                        
+                        // Method 2: Parse HTML
                         if (!empty($data['episode_html'])) {
                             $html = $data['episode_html'];
                         } elseif (!empty($data['episode_html_file'])) {
@@ -242,9 +372,9 @@ class EpisodeResource extends Resource
 
                         if (empty($html)) {
                             \Filament\Notifications\Notification::make()
-                                ->title('HTML Required')
+                                ->title('Input Required')
                                 ->danger()
-                                ->body('Mohon paste atau upload HTML halaman episode terlebih dahulu.')
+                                ->body('Mohon masukkan URL, paste HTML, atau upload file HTML.')
                                 ->send();
                             return;
                         }
@@ -285,23 +415,25 @@ class EpisodeResource extends Resource
                                     'server_name' => $serverData['name'] ?? 'Unknown',
                                     'embed_url' => $embedCode,
                                     'is_active' => true,
+                                    'source' => 'sync',
                                 ]
                             );
                             if ($vs->wasRecentlyCreated) { $created++; } else { $updated++; }
                         }
 
-                        // --- AUTO CREATE ADMIN LOG (SETIAP SYNC) ---
-                        $user = auth()->user();
+                        // --- AUTO CREATE ADMIN LOG (SETIAP SYNC) - BAYARAN SESUAI RATE USER ---
+                        $user = auth()->user()?->refresh();
                         if ($user && $user->isAdmin() && ($created > 0 || $updated > 0)) {
+                            $rate = $user->payment_rate ?? 500;
                             \App\Models\AdminEpisodeLog::updateOrCreate(
                                 [
                                     'user_id' => $user->id,
                                     'episode_id' => $record->id,
                                 ],
                                 [
-                                    'amount' => \App\Models\AdminEpisodeLog::DEFAULT_AMOUNT,
+                                    'amount' => $rate,
                                     'status' => \App\Models\AdminEpisodeLog::STATUS_PENDING,
-                                    'note' => "Sync video servers (Created: {$created}, Updated: {$updated})",
+                                    'note' => "Sync video servers (Created: {$created}, Updated: {$updated}) - Rp " . number_format($rate, 0, ',', '.'),
                                 ]
                             );
                         }
@@ -322,11 +454,12 @@ class EpisodeResource extends Resource
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
                 
-                // BULK UPLOAD LOCAL (JANGAN DIUBAH)
+                // BULK UPLOAD LOCAL (HANYA ADMIN UPLOAD & SUPERADMIN)
                 Tables\Actions\BulkAction::make('bulk_upload_local')
                     ->label('Bulk Upload Video Lokal')
                     ->icon('heroicon-o-upload')
                     ->color('primary')
+                    ->visible(fn () => auth()->user()?->canUploadVideo())
                     ->requiresConfirmation()
                     ->form([
                         Forms\Components\View::make('filament.components.upload-progress')
@@ -406,10 +539,28 @@ class EpisodeResource extends Resource
                                     [
                                         'embed_url' => $url,
                                         'is_active' => true,
+                                        'source' => 'manual',
                                     ]
                                 );
 
                                 if ($vs->wasRecentlyCreated) { $created++; } else { $updated++; }
+                                
+                                // --- AUTO CREATE ADMIN LOG PER EPISODE - BAYARAN SESUAI RATE USER ---
+                                $user = auth()->user()?->refresh();
+                                if ($user && $user->isAdmin()) {
+                                    $rate = $user->payment_rate ?? 500;
+                                    \App\Models\AdminEpisodeLog::updateOrCreate(
+                                        [
+                                            'user_id' => $user->id,
+                                            'episode_id' => $episode->id,
+                                        ],
+                                        [
+                                            'amount' => $rate,
+                                            'status' => \App\Models\AdminEpisodeLog::STATUS_PENDING,
+                                            'note' => "Bulk upload video manual ({$name}) - Rp " . number_format($rate, 0, ',', '.'),
+                                        ]
+                                    );
+                                }
                             }
                         }
 
@@ -428,36 +579,60 @@ class EpisodeResource extends Resource
                             ->send();
                     }),
 
-                // BULK SYNC SERVERS (JANGAN DIUBAH - SUDAH WORK)
+                // BULK SYNC SERVERS (HANYA ADMIN SYNC & SUPERADMIN)
                 Tables\Actions\BulkAction::make('bulk_sync_servers')
                     ->label('Bulk Sync Servers')
                     ->icon('heroicon-o-refresh')
                     ->color('success')
+                    ->visible(fn () => auth()->user()?->canSyncServer())
                     ->form([
+                        Forms\Components\Textarea::make('episode_urls')
+                            ->label('URL Episodes (1 per baris)')
+                            ->rows(4)
+                            ->placeholder("https://nontonanimeid.boats/anime-episode-1/\nhttps://nontonanimeid.boats/anime-episode-2/")
+                            ->helperText('Masukkan URL episode NontonAnimeID untuk fetch semua server via AJAX. Nomor episode dari URL akan di-match dengan episode yang dipilih.'),
                         Forms\Components\Textarea::make('html_content')
                             ->label('HTML Content (untuk semua episode)')
-                            ->rows(6)
-                            ->placeholder('Paste HTML halaman yang berisi video servers...')
-                            ->helperText('Opsional: Paste HTML yang sama untuk semua episode yang dipilih'),
+                            ->rows(4)
+                            ->placeholder('Atau paste HTML halaman episode...')
+                            ->helperText('Opsional: Paste HTML yang sama untuk semua episode (hanya server pertama yang bisa diambil)'),
                         Forms\Components\FileUpload::make('html_files')
                             ->label('Upload HTML Files (per episode)')
                             ->multiple()
                             ->acceptedFileTypes(['text/html', 'text/plain', '.html', '.htm', '.txt'])
-                            ->directory('uploads/bulk-html') // Folder sementara
+                            ->directory('uploads/bulk-html')
                             ->preserveFilenames()
-                            ->helperText('Upload file HTML. Sistem akan membaca, sinkronisasi, lalu MENGHAPUS file otomatis agar hemat memori.'),
+                            ->helperText('Upload file HTML per episode. Nama file harus mengandung nomor episode.'),
                         Forms\Components\Toggle::make('delete_existing')
                             ->label('Hapus server lama yang tidak ditemukan')
+                            ->helperText('Hanya server sync yang dihapus. Server admin upload TIDAK akan dihapus.')
                             ->default(false),
                     ])
                     ->action(function (\Illuminate\Database\Eloquent\Collection $records, array $data) {
                         $service = app(\App\Services\AnimeSailService::class);
                         $globalHtml = $data['html_content'] ?? '';
                         $htmlFiles = $data['html_files'] ?? [];
+                        $episodeUrls = $data['episode_urls'] ?? '';
                         
                         $episodeHtmlMap = [];
+                        $episodeUrlMap = [];
                         
-                        // --- 1. BACA & MAPPING FILE ---
+                        // --- PARSE URLs (NontonAnimeID) ---
+                        if (!empty($episodeUrls)) {
+                            $urls = preg_split('/[\r\n]+/', trim($episodeUrls));
+                            foreach ($urls as $url) {
+                                $url = trim($url);
+                                if (empty($url)) continue;
+                                
+                                // Extract episode number from URL
+                                if (preg_match('/episode-?(\d+)/i', $url, $m)) {
+                                    $epNum = (int) $m[1];
+                                    $episodeUrlMap[$epNum] = $url;
+                                }
+                            }
+                        }
+                        
+                        // --- BACA & MAPPING FILE ---
                         foreach ($htmlFiles as $file) {
                             $path = storage_path('app/public/' . $file);
                             
@@ -465,7 +640,6 @@ class EpisodeResource extends Resource
                                 $filename = urldecode(basename($file));
                                 $content = file_get_contents($path);
                                 
-                                // Regex Cerdas
                                 if (preg_match('/(?:Episode|Ep)[^0-9]*(\d+)/i', $filename, $matches)) {
                                     $epNum = (int) $matches[1];
                                     $episodeHtmlMap[$epNum] = $content;
@@ -476,11 +650,11 @@ class EpisodeResource extends Resource
                             }
                         }
                         
-                        if (empty($globalHtml) && empty($episodeHtmlMap)) {
+                        if (empty($globalHtml) && empty($episodeHtmlMap) && empty($episodeUrlMap)) {
                             \Filament\Notifications\Notification::make()
-                                ->title('File Tidak Terbaca')
+                                ->title('Input Required')
                                 ->danger()
-                                ->body('Tidak ada file HTML yang cocok dengan nomor episode.')
+                                ->body('Mohon masukkan URL, paste HTML, atau upload file HTML.')
                                 ->send();
                             return;
                         }
@@ -491,12 +665,45 @@ class EpisodeResource extends Resource
                         $skippedEpisodes = 0;
                         
                         $recordsList = $records->sortBy('episode_number')->values();
+                        $fetcher = new \App\Services\NontonAnimeIdFetcher();
                         
-                        // --- 2. PROSES DATA KE DATABASE ---
+                        // --- PROSES DATA KE DATABASE ---
                         foreach ($recordsList as $episode) {
-                            $html = null;
                             $epNum = $episode->episode_number;
-
+                            $servers = [];
+                            
+                            // Prioritas: URL > HTML File > Global HTML
+                            if (isset($episodeUrlMap[$epNum])) {
+                                // Fetch via AJAX (NontonAnimeID)
+                                try {
+                                    $result = $fetcher->syncToEpisode($episode->id, $episodeUrlMap[$epNum], !empty($data['delete_existing']));
+                                    if ($result['success']) {
+                                        $totalCreated += $result['created'];
+                                        $totalUpdated += $result['updated'];
+                                        $processedEpisodes++;
+                                        
+                                        // Admin log
+                                        $user = auth()->user()?->refresh();
+                                        if ($user && $user->isAdmin()) {
+                                            $rate = $user->payment_rate ?? 500;
+                                            \App\Models\AdminEpisodeLog::updateOrCreate(
+                                                ['user_id' => $user->id, 'episode_id' => $episode->id],
+                                                [
+                                                    'amount' => $rate,
+                                                    'status' => \App\Models\AdminEpisodeLog::STATUS_PENDING,
+                                                    'note' => "Bulk sync via URL ({$result['created']} created) - Rp " . number_format($rate, 0, ',', '.'),
+                                                ]
+                                            );
+                                        }
+                                        continue; // Skip to next episode
+                                    }
+                                } catch (\Exception $e) {
+                                    // Fall through to HTML parsing
+                                }
+                            }
+                            
+                            // Parse from HTML
+                            $html = null;
                             if (isset($episodeHtmlMap[$epNum])) {
                                 $html = $episodeHtmlMap[$epNum];
                             } elseif (!empty($globalHtml)) {
@@ -519,50 +726,61 @@ class EpisodeResource extends Resource
                                 if (!empty($keepUrls)) {
                                     \App\Models\VideoServer::where('episode_id', $episode->id)
                                         ->whereNotIn('embed_url', $keepUrls)
+                                        ->where(function ($q) {
+                                            $q->where('source', 'sync')
+                                              ->orWhereNull('source');
+                                        })
                                         ->delete();
                                 }
                             }
                             
                             foreach ($servers as $serverData) {
+                                $serverUrl = $serverData['url'] ?? '';
+                                if (empty($serverUrl) || !preg_match('/^https?:\/\//i', $serverUrl)) {
+                                    continue;
+                                }
+                                
+                                if (str_contains($serverUrl, '/redirect/')) {
+                                    continue;
+                                }
+                                
                                 $embedCode = \App\Services\VideoEmbedHelper::toEmbedCode(
-                                    $serverData['url'],
+                                    $serverUrl,
                                     $serverData['name'] ?? null
                                 );
                                 
                                 $vs = \App\Models\VideoServer::updateOrCreate(
                                     [
                                         'episode_id' => $episode->id,
-                                        'embed_url' => $serverData['url'],
+                                        'embed_url' => $serverUrl,
                                     ],
                                     [
                                         'server_name' => $serverData['name'] ?? 'Unknown',
-                                        'embed_url' => $embedCode,
+                                        'embed_url' => $embedCode ?: $serverUrl,
                                         'is_active' => true,
+                                        'source' => 'sync',
                                     ]
                                 );
                                 if ($vs->wasRecentlyCreated) { $totalCreated++; } else { $totalUpdated++; }
                             }
                             $processedEpisodes++;
                             
-                            // --- AUTO CREATE ADMIN LOG PER EPISODE ---
-                            $user = auth()->user();
+                            // Admin log
+                            $user = auth()->user()?->refresh();
                             if ($user && $user->isAdmin() && !empty($servers)) {
+                                $rate = $user->payment_rate ?? 500;
                                 \App\Models\AdminEpisodeLog::updateOrCreate(
+                                    ['user_id' => $user->id, 'episode_id' => $episode->id],
                                     [
-                                        'user_id' => $user->id,
-                                        'episode_id' => $episode->id,
-                                    ],
-                                    [
-                                        'amount' => \App\Models\AdminEpisodeLog::DEFAULT_AMOUNT,
+                                        'amount' => $rate,
                                         'status' => \App\Models\AdminEpisodeLog::STATUS_PENDING,
-                                        'note' => "Bulk sync video servers (" . count($servers) . " servers)",
+                                        'note' => "Bulk sync (" . count($servers) . " servers) - Rp " . number_format($rate, 0, ',', '.'),
                                     ]
                                 );
                             }
                         }
 
-                        // --- 3. AUTO CLEANUP (FITUR FILE SAMPAH) ---
-                        // Hapus semua file yang baru saja diupload dari disk
+                        // --- AUTO CLEANUP FILE ---
                         foreach ($htmlFiles as $file) {
                             if (Storage::disk('public')->exists($file)) {
                                 Storage::disk('public')->delete($file);
@@ -575,15 +793,15 @@ class EpisodeResource extends Resource
                         }
                         
                         \Filament\Notifications\Notification::make()
-                            ->title('Bulk Sync Completed & Cleaned Up')
+                            ->title('Bulk Sync Completed')
                             ->success()
-                            ->body($message . " (File sampah telah dihapus)")
+                            ->body($message)
                             ->send();
                     })
                     ->deselectRecordsAfterCompletion()
                     ->requiresConfirmation()
                     ->modalHeading('Bulk Sync Video Servers')
-                    ->modalSubheading('Upload file -> Proses -> File otomatis dihapus setelah selesai.'),
+                    ->modalSubheading('Pilih metode: URL (fetch AJAX) atau HTML (parse offline)'),
             ]);
     }
     

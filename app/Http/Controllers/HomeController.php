@@ -143,51 +143,38 @@ class HomeController extends Controller
                 $searchWords = preg_split('/\s+/', $searchLower);
                 
                 $query->where(function($q) use ($search, $searchLower, $searchWords) {
-                    // Method 1: LIKE dengan setiap kata
+                    // Method 1: LIKE dengan setiap kata (substring match)
                     foreach ($searchWords as $word) {
                         if (strlen($word) >= 2) {
                             $q->orWhere('title', 'like', "%{$word}%");
                         }
                     }
                     
-                    // Method 2: Partial match - potong huruf terakhir (toleransi 1-2 huruf)
-                    // Ini akan menangani "lifi" -> "lif" yang bisa match "life"
+                    // Method 2: SOUNDEX matching (untuk typo fonetik)
+                    // Cocok untuk kata-kata yang terdengar mirip
                     foreach ($searchWords as $word) {
                         if (strlen($word) >= 3) {
+                            $q->orWhereRaw('SOUNDEX(title) = SOUNDEX(?)', [$word]);
+                        }
+                    }
+                    
+                    // Method 3: Partial match - potong huruf terakhir (toleransi 1-2 huruf typo)
+                    foreach ($searchWords as $word) {
+                        if (strlen($word) >= 4) {
                             $partial = substr($word, 0, -1); // Buang 1 huruf terakhir
                             $q->orWhere('title', 'like', "%{$partial}%");
                         }
-                        if (strlen($word) >= 4) {
+                        if (strlen($word) >= 5) {
                             $partial = substr($word, 0, -2); // Buang 2 huruf terakhir
                             $q->orWhere('title', 'like', "%{$partial}%");
                         }
-                    }
-                    
-                    // Method 3: Potong huruf pertama (toleransi typo di awal kata)
-                    foreach ($searchWords as $word) {
-                        if (strlen($word) >= 4) {
-                            $partial = substr($word, 1); // Buang 1 huruf pertama
+                        if (strlen($word) >= 6) {
+                            $partial = substr($word, 0, 3); // Minimal 3 huruf pertama
                             $q->orWhere('title', 'like', "%{$partial}%");
                         }
                     }
                     
-                    // Method 4: Ganti huruf umum yang sering typo (i<->e, a<->e, dll)
-                    foreach ($searchWords as $word) {
-                        if (strlen($word) >= 3) {
-                            // i -> e (lifi -> life)
-                            $variation = str_replace('i', 'e', $word);
-                            if ($variation !== $word) {
-                                $q->orWhere('title', 'like', "%{$variation}%");
-                            }
-                            // e -> i
-                            $variation = str_replace('e', 'i', $word);
-                            if ($variation !== $word) {
-                                $q->orWhere('title', 'like', "%{$variation}%");
-                            }
-                        }
-                    }
-                    
-                    // Method 5: Gabungan kata tanpa spasi
+                    // Method 4: Gabungan kata tanpa spasi
                     $noSpace = str_replace(' ', '', $searchLower);
                     if (strlen($noSpace) >= 3) {
                         $q->orWhereRaw('LOWER(REPLACE(title, " ", "")) LIKE ?', ["%{$noSpace}%"]);
@@ -324,47 +311,84 @@ class HomeController extends Controller
     
     /**
      * Find the best matching anime title for "Did you mean" suggestion
+     * Menggunakan scoring yang lebih sophisticated untuk typo tolerance
      */
     private function findBestMatch(string $searchTerm): ?Anime
     {
         $candidates = Anime::select(['id', 'title', 'slug', 'poster_image', 'type', 'release_year', 'rating'])
-            ->limit(1000)
+            ->limit(2000)
             ->get();
         
+        $searchLower = Str::lower($searchTerm);
         $bestMatch = null;
         $bestScore = 0;
         
         foreach ($candidates as $anime) {
-            $title = Str::lower($anime->title);
+            $titleLower = Str::lower($anime->title);
             
-            // Calculate similarity
-            similar_text($searchTerm, $title, $percent);
+            // Priority 1: Exact substring match anywhere in title
+            if (Str::contains($titleLower, $searchLower)) {
+                $bestMatch = $anime;
+                $bestScore = 10000;
+                break;
+            }
             
-            // Levenshtein distance
-            $distance = levenshtein(
-                Str::limit($searchTerm, 60, ''),
-                Str::limit($title, 60, '')
-            );
+            // Priority 2: Check if major words in search are present in title
+            // Split both search dan title into words
+            $searchWords = array_filter(preg_split('/\s+/', $searchLower));
+            $titleWords = array_filter(preg_split('/\s+/', $titleLower));
             
-            // Calculate word overlap
-            $searchWords = preg_split('/\s+/', $searchTerm);
-            $titleWords = preg_split('/\s+/', $title);
-            $commonWords = count(array_intersect($searchWords, $titleWords));
+            // Count berapa banyak words dari search yang cocok di title
+            $matchedCount = 0;
+            foreach ($searchWords as $sWord) {
+                if (strlen($sWord) < 2) continue;
+                
+                foreach ($titleWords as $tWord) {
+                    // Exact word match
+                    if ($sWord === $tWord) {
+                        $matchedCount++;
+                        break;
+                    }
+                    // Word prefix match (e.g., "game" starts with "game")
+                    elseif (Str::startsWith($tWord, $sWord) && strlen($sWord) >= 2) {
+                        $matchedCount++;
+                        break;
+                    }
+                    // Close match via Levenshtein (e.g., "liff" vs "life")
+                    elseif (levenshtein($sWord, $tWord) <= 2 && strlen($sWord) >= 3) {
+                        $matchedCount++;
+                        break;
+                    }
+                }
+            }
             
-            // Combined score
-            $score = $percent + ($commonWords * 15) - ($distance * 2);
+            // If tidak semua kata cocok, skip anime ini
+            if ($matchedCount < count($searchWords)) {
+                continue;
+            }
             
-            if ($score > $bestScore && $score > 30) {
-                $bestScore = $score;
+            // Priority 3: Calculate similarity percentage
+            // Gunakan similar_text untuk perhitungan akhir
+            similar_text($searchLower, $titleLower, $percent);
+            
+            // Jika % similarity tinggi dan semua words matched, ini candidate terbaik
+            if ($percent > $bestScore) {
+                $bestScore = $percent;
                 $bestMatch = $anime;
             }
         }
         
-        return $bestMatch;
+        // CRITICAL: Hanya return jika similarity >= 65%
+        if ($bestMatch && $bestScore >= 65) {
+            return $bestMatch;
+        }
+        
+        return null;
     }
     
     /**
      * Calculate relevance score for sorting fuzzy search results
+     * Scoring yang lebih akurat untuk menampilkan hasil terbaik
      */
     private function calculateRelevance(string $title, string $search): float
     {
@@ -373,38 +397,67 @@ class HomeController extends Controller
         
         $score = 0;
         
-        // Exact match bonus
-        if (Str::contains($titleLower, $searchLower)) {
-            $score += 100;
+        // 1. Prefix match
+        if (Str::startsWith($titleLower, $searchLower)) {
+            $score += 300;
         }
         
-        // Similar text percentage
-        similar_text($searchLower, $titleLower, $percent);
-        $score += $percent;
+        // 2. Exact substring match
+        if (Str::contains($titleLower, $searchLower)) {
+            $score += 200;
+        }
         
-        // Word match bonus
+        // 3. Similar text percentage
+        similar_text($searchLower, $titleLower, $percent);
+        $score += ($percent * 2);
+        
+        // 4. Word match bonus
         $searchWords = preg_split('/\s+/', $searchLower);
         $titleWords = preg_split('/\s+/', $titleLower);
         
+        // Exact word matches
+        $matchedWords = 0;
         foreach ($searchWords as $word) {
             if (strlen($word) >= 2) {
-                // Exact word match
                 if (in_array($word, $titleWords)) {
-                    $score += 20;
+                    $score += 50;
+                    $matchedWords++;
                 }
                 // Partial word match
                 elseif (Str::contains($titleLower, $word)) {
-                    $score += 10;
+                    $score += 20;
                 }
             }
         }
         
-        // Levenshtein penalty (lower distance = higher score)
-        $distance = levenshtein(
-            Str::limit($searchLower, 50, ''),
-            Str::limit($titleLower, 50, '')
-        );
-        $score -= ($distance * 0.5);
+        // 5. Levenshtein distance penalty (lower distance = higher score)
+        $distance = levenshtein($searchLower, $titleLower);
+        
+        if ($distance <= 2) {
+            $score += (100 - ($distance * 30));
+        } elseif ($distance <= 4) {
+            $score += (50 - ($distance * 10));
+        } elseif ($distance <= 8) {
+            $score -= ($distance * 0.5);
+        }
+        
+        // 6. SOUNDEX matching
+        foreach ($searchWords as $word) {
+            if (strlen($word) >= 3) {
+                foreach ($titleWords as $titleWord) {
+                    if (soundex($word) === soundex($titleWord)) {
+                        $score += 30;
+                    }
+                }
+            }
+        }
+        
+        // 7. Bonus untuk match at beginning
+        foreach ($searchWords as $word) {
+            if (strlen($word) >= 2 && Str::startsWith($titleLower, $word)) {
+                $score += 40;
+            }
+        }
         
         return $score;
     }
@@ -485,5 +538,96 @@ class HomeController extends Controller
             'latestEpisodes' => $latestEpisodes,
             'pagination' => $pagination,
         ]);
+    }
+
+    /**
+     * Get real-time search suggestions for autocomplete
+     * Used by AJAX requests from search input
+     */
+    public function searchSuggestions()
+    {
+        $query = request('q', '');
+        
+        if (strlen($query) < 2) {
+            return response()->json(['suggestions' => []]);
+        }
+
+        $query = trim($query);
+        $queryLower = Str::lower($query);
+        $queryWords = array_filter(preg_split('/\s+/', $queryLower));
+
+        if (empty($queryWords)) {
+            return response()->json(['suggestions' => []]);
+        }
+
+        try {
+            // Use database LIKE queries - more efficient
+            $candidates = Anime::select(['id', 'title', 'slug', 'poster_image', 'type', 'release_year', 'rating']);
+            
+            // Method 1: Exact substring match (highest priority)
+            $candidates->where(function ($q) use ($queryLower) {
+                $q->whereRaw('LOWER(title) LIKE ?', ["%{$queryLower}%"]);
+            });
+
+            // Method 2: Match each word individually (ALL words must match)
+            foreach ($queryWords as $word) {
+                if (strlen($word) >= 2) {
+                    $candidates->where(function ($q) use ($word) {
+                        $q->whereRaw('LOWER(title) LIKE ?', ["%{$word}%"]);
+                    });
+                }
+            }
+
+            $candidates = $candidates->limit(100)->get();
+
+            $results = [];
+            
+            foreach ($candidates as $anime) {
+                $titleLower = Str::lower($anime->title);
+                
+                // Score based on similarity
+                $score = similar_text($queryLower, $titleLower);
+                
+                // Bonus for prefix match
+                if (Str::startsWith($titleLower, $queryLower)) {
+                    $score += 50;
+                }
+                
+                $results[] = [
+                    'anime' => $anime,
+                    'score' => $score,
+                ];
+            }
+
+            // Sort by score
+            usort($results, fn($a, $b) => $b['score'] <=> $a['score']);
+            
+            // Take top 8
+            $results = array_slice($results, 0, 8);
+
+            $suggestions = array_map(function ($item) {
+                $anime = $item['anime'];
+                return [
+                    'id' => $anime->id,
+                    'title' => $anime->title,
+                    'slug' => $anime->slug,
+                    'poster_image' => $anime->poster_image ? asset('storage/' . $anime->poster_image) : asset('images/placeholder.png'),
+                    'type' => $anime->type,
+                    'release_year' => $anime->release_year,
+                    'rating' => number_format($anime->rating, 1),
+                    'url' => route('detail', ['anime' => $anime->slug]),
+                ];
+            }, $results);
+
+            return response()->json([
+                'suggestions' => $suggestions,
+                'count' => count($suggestions),
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'suggestions' => [],
+            ], 500);
+        }
     }
 }

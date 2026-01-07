@@ -107,6 +107,14 @@ class AnimeSailService
         $host = $baseUrl ? parse_url($baseUrl, PHP_URL_HOST) : parse_url($this->baseUrl, PHP_URL_HOST);
         $base = ($scheme && $host) ? ($scheme . '://' . $host) : rtrim($this->baseUrl, '/');
 
+        // ====== DETEKSI SUMBER HTML ======
+        
+        // Cek apakah dari NontonAnimeID
+        if (str_contains($html, 'nontonanimeid') || str_contains($html, 'kotakanimeid') || str_contains($html, 'episode-item')) {
+            return $this->parseNontonAnimeIdEpisodeList($html, $crawler, $base);
+        }
+
+        // Default: AnimeSail format
         $crawler->filter('.episode-list a, .episodelist a, .entry-content a, .eplister a, .episodes a, ul li a')->each(function (Crawler $node) use (&$episodes, $base) {
             try {
                 $text = $node->text();
@@ -136,6 +144,103 @@ class AnimeSailService
         return ['episodes' => $episodes];
     }
 
+    /**
+     * Parse episode list dari NontonAnimeID HTML
+     */
+    protected function parseNontonAnimeIdEpisodeList(string $html, Crawler $crawler, string $base): array
+    {
+        $episodes = [];
+
+        // Pattern 1: Episode cards dengan class "episode-item"
+        // <a href="URL" class="episode-item"><span class="ep-title">Episode X</span>...
+        try {
+            $crawler->filter('a.episode-item, .episode-list-items a, .meta-episodes a.ep-link')->each(function (Crawler $node) use (&$episodes, $base) {
+                $href = $node->attr('href');
+                
+                // Normalize URL
+                if ($href && strpos($href, '//') === 0) {
+                    $href = 'https:' . $href;
+                } elseif ($href && !preg_match('/^https?:/i', $href)) {
+                    $href = rtrim($base, '/') . '/' . ltrim($href, '/');
+                }
+
+                // Extract episode number from URL or text
+                $episodeNumber = null;
+                $title = '';
+                
+                // Try to get from ep-title span
+                try {
+                    $titleNode = $node->filter('.ep-title');
+                    if ($titleNode->count()) {
+                        $title = trim($titleNode->text());
+                    }
+                } catch (\Exception $e) {}
+                
+                // Fallback to full text
+                if (empty($title)) {
+                    $title = trim($node->text());
+                }
+                
+                // Extract episode number from title
+                if (preg_match('/Episode\s*(\d+)/i', $title, $m)) {
+                    $episodeNumber = (int) $m[1];
+                }
+                // Or from URL
+                elseif (preg_match('/episode-?(\d+)/i', $href, $m)) {
+                    $episodeNumber = (int) $m[1];
+                }
+                
+                if ($episodeNumber && $href) {
+                    // Avoid duplicates
+                    $exists = false;
+                    foreach ($episodes as $ep) {
+                        if ($ep['number'] === $episodeNumber) {
+                            $exists = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!$exists) {
+                        $episodes[] = [
+                            'number' => $episodeNumber,
+                            'title' => $title ?: "Episode {$episodeNumber}",
+                            'url' => $href,
+                        ];
+                    }
+                }
+            });
+        } catch (\Exception $e) {}
+
+        // Pattern 2: JSON-LD Schema (lebih reliable)
+        if (empty($episodes)) {
+            try {
+                if (preg_match('/<script[^>]*type="application\/ld\+json"[^>]*>(.*?)<\/script>/is', $html, $jsonMatch)) {
+                    $jsonData = json_decode($jsonMatch[1], true);
+                    if (isset($jsonData['@graph'])) {
+                        foreach ($jsonData['@graph'] as $item) {
+                            if (isset($item['@type']) && $item['@type'] === 'TVSeries' && isset($item['episode'])) {
+                                foreach ($item['episode'] as $ep) {
+                                    if (isset($ep['episodeNumber']) && isset($ep['url'])) {
+                                        $episodes[] = [
+                                            'number' => (int) $ep['episodeNumber'],
+                                            'title' => $ep['name'] ?? "Episode {$ep['episodeNumber']}",
+                                            'url' => $ep['url'],
+                                        ];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (\Exception $e) {}
+        }
+
+        // Sort by episode number
+        usort($episodes, fn($a, $b) => $a['number'] <=> $b['number']);
+
+        return ['episodes' => $episodes];
+    }
+
     // === BAGIAN UTAMA YANG DIPERBAIKI (Sync dari HTML Upload) ===
 
     public function syncEpisodesFromHtml(Anime $anime, string $html, ?string $animeUrl = null): array
@@ -145,6 +250,9 @@ class AnimeSailService
         if (empty($details['episodes'])) {
             return ['created' => 0, 'updated' => 0, 'errors' => ['No episodes found in HTML']];
         }
+
+        // Detect if HTML is from NontonAnimeID (don't try to fetch servers online)
+        $isNontonAnimeId = str_contains($html, 'nontonanimeid') || str_contains($html, 'kotakanimeid');
 
         // 2. Parse Video Server dari HTML (Logika Baru)
         $directServers = $this->getEpisodeServersFromHtml($html, $animeUrl);
@@ -169,16 +277,23 @@ class AnimeSailService
 
                 // LOGIKA PENTING: Jika episode cocok, pakai server dari HTML upload
                 if ($directEpisodeNum && $episodeData['number'] === $directEpisodeNum) {
-                     $servers = $directServers;
+                    $servers = $directServers;
+                } elseif ($isNontonAnimeId) {
+                    // NontonAnimeID: Skip fetching servers (butuh AJAX, tidak bisa langsung)
+                    // User harus upload HTML per episode atau bulk sync di halaman Episode
+                    $servers = [];
                 } else {
-                     // Episode lain fetch online (mungkin gagal kalau diproteksi)
-                     $servers = $this->getEpisodeServers($episodeData['url']);
+                    // AnimeSail: Episode lain fetch online (mungkin gagal kalau diproteksi)
+                    $servers = $this->getEpisodeServers($episodeData['url']);
                 }
 
                 foreach ($servers as $serverData) {
+                    $serverUrl = $serverData['url'] ?? '';
+                    if (empty($serverUrl)) continue;
+                    
                     VideoServer::updateOrCreate(
-                        ['episode_id' => $episode->id, 'embed_url' => $serverData['url']],
-                        ['server_name' => $serverData['name'], 'is_active' => true]
+                        ['episode_id' => $episode->id, 'embed_url' => $serverUrl],
+                        ['server_name' => $serverData['name'] ?? 'Unknown', 'is_active' => true, 'source' => 'sync']
                     );
                 }
 
@@ -198,6 +313,15 @@ class AnimeSailService
         try {
             $crawler = new Crawler($html);
             $servers = [];
+
+            // ====== DETEKSI SUMBER HTML ======
+            
+            // Cek apakah dari NontonAnimeID (s7.nontonanimeid.boats / kotakanimeid)
+            if (str_contains($html, 'nontonanimeid') || str_contains($html, 'kotakanimeid') || str_contains($html, 'kotakajax')) {
+                return $this->parseNontonAnimeIdServers($html, $crawler);
+            }
+
+            // Default: AnimeSail format
             $base = 'https://animesail.in'; 
 
             // 1. Cek Default Player (#pembed)
@@ -224,6 +348,87 @@ class AnimeSailService
         } catch (\Exception $e) {
             return [];
         }
+    }
+
+    /**
+     * Parse servers dari NontonAnimeID HTML
+     * Dari HTML hanya bisa ambil server pertama (yang ada iframe-nya)
+     * Server lain perlu AJAX fetch via NontonAnimeIdFetcher
+     */
+    protected function parseNontonAnimeIdServers(string $html, Crawler $crawler): array
+    {
+        $servers = [];
+        $serverList = [];
+        
+        // 1. Extract ALL server names dari player tabs (untuk info)
+        // <li id="player-option-1" data-post="152760" data-type="Lokal-c" data-nume="1">
+        try {
+            $crawler->filter('ul.tabs1.player li[data-type], ul.player li[data-type]')->each(function (Crawler $node) use (&$serverList) {
+                $serverType = $node->attr('data-type');
+                $serverName = trim($node->text());
+                // Clean server name (remove "S-" prefix)
+                $serverName = preg_replace('/^S-/i', '', $serverName);
+                
+                if ($serverType) {
+                    $serverList[] = [
+                        'name' => $serverName ?: $serverType,
+                        'type' => $serverType,
+                        'post_id' => $node->attr('data-post'),
+                        'nume' => $node->attr('data-nume'),
+                    ];
+                }
+            });
+        } catch (\Exception $e) {}
+
+        // 2. Extract main iframe URL (HANYA server pertama yang punya URL di HTML)
+        $firstIframeUrl = null;
+        try {
+            // Coba berbagai selector untuk iframe
+            $iframeSelectors = [
+                '#videoku iframe',
+                '.player_embed iframe', 
+                '.player-embed iframe',
+                '#pembed iframe',
+                'iframe[data-src*="kotakanimeid"]',
+                'iframe[data-src*="video-embed"]',
+                'iframe[src*="kotakanimeid"]',
+            ];
+            
+            foreach ($iframeSelectors as $selector) {
+                try {
+                    $iframe = $crawler->filter($selector)->first();
+                    if ($iframe->count()) {
+                        $firstIframeUrl = $iframe->attr('data-src') ?: $iframe->attr('src');
+                        if ($firstIframeUrl && str_starts_with($firstIframeUrl, 'http')) {
+                            break;
+                        }
+                    }
+                } catch (\Exception $e) {}
+            }
+        } catch (\Exception $e) {}
+
+        // 3. Jika ada iframe URL, assign ke server pertama
+        if ($firstIframeUrl && !empty($serverList)) {
+            $servers[] = [
+                'name' => $serverList[0]['name'],
+                'url' => $firstIframeUrl,
+                'type' => 'nontonanimeid',
+            ];
+        } elseif ($firstIframeUrl) {
+            // Tidak ada server list tapi ada iframe
+            $servers[] = [
+                'name' => 'Default',
+                'url' => $firstIframeUrl,
+                'type' => 'iframe',
+            ];
+        }
+        
+        // 4. Log info untuk debugging
+        if (count($serverList) > 1) {
+            \Log::info("NontonAnimeID: Found " . count($serverList) . " servers but only 1st has embed URL. Use 'Fetch via URL' for all servers.");
+        }
+
+        return $servers;
     }
 
     /**

@@ -17,3 +17,18 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+// Health check endpoint for monitoring
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'ok',
+        'timestamp' => now()->toIso8601String(),
+        'service' => 'nipnime',
+    ]);
+});
+
+// Video Extractor API (extract direct URL from embed)
+Route::prefix('video')->group(function () {
+    Route::post('/extract', [\App\Http\Controllers\Api\VideoExtractorController::class, 'extract']);
+    Route::get('/supported-hosts', [\App\Http\Controllers\Api\VideoExtractorController::class, 'supportedHosts']);
+});

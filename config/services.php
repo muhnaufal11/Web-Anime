@@ -36,4 +36,8 @@ return [
         'verify_ssl' => env('ANIMESAIL_VERIFY_SSL', false),
     ],
 
+    'discord' => [
+        'webhook_url' => env('DISCORD_WEBHOOK_URL', ''),
+    ],
+
 ];

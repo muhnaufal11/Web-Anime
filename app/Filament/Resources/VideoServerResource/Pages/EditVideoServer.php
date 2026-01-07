@@ -26,15 +26,19 @@ class EditVideoServer extends EditRecord
             ->first();
 
         // Jika belum ada log, buat log baru (atau update catatan)
+        // Gunakan payment_rate user, refresh dulu untuk dapat data terbaru
+        $user->refresh();
+        $rate = $user->payment_rate ?? AdminEpisodeLog::DEFAULT_AMOUNT;
+        
         AdminEpisodeLog::updateOrCreate(
             [
                 'user_id' => $user->id,
                 'episode_id' => $this->record->episode_id,
             ],
             [
-                'amount' => AdminEpisodeLog::DEFAULT_AMOUNT,
+                'amount' => $rate,
                 'status' => AdminEpisodeLog::STATUS_PENDING,
-                'note' => 'Mengedit video server: ' . $this->record->server_name,
+                'note' => 'Mengedit video server: ' . $this->record->server_name . ' - Rp ' . number_format($rate, 0, ',', '.'),
             ]
         );
     }

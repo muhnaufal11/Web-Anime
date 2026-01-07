@@ -82,7 +82,7 @@ return [
     |
     */
 
-    'locale' => 'en',
+    'locale' => 'id',
 
     /*
     |--------------------------------------------------------------------------
@@ -95,7 +95,22 @@ return [
     |
     */
 
-    'fallback_locale' => 'en',
+    'fallback_locale' => 'id',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Available Locales
+    |--------------------------------------------------------------------------
+    |
+    | List of available locales for the application
+    |
+    */
+
+    'available_locales' => [
+        'id' => ['name' => 'Indonesia', 'flag' => '🇮🇩'],
+        'en' => ['name' => 'English', 'flag' => '🇬🇧'],
+        'ja' => ['name' => '日本語', 'flag' => '🇯🇵'],
+    ],
 
     /*
     |--------------------------------------------------------------------------
@@ -212,5 +227,16 @@ return [
     'aliases' => Facade::defaultAliases()->merge([
         // 'ExampleClass' => App\Example\ExampleClass::class,
     ])->toArray(),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Google Analytics Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Google Analytics Measurement ID for tracking website analytics.
+    | Set GA_MEASUREMENT_ID in your .env file (format: G-XXXXXXXXXX)
+    |
+    */
+    'ga_measurement_id' => env('GA_MEASUREMENT_ID', null),
 
 ];

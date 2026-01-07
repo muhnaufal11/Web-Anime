@@ -7,9 +7,9 @@
     <div class="max-w-7xl mx-auto px-4 py-8">
         <div class="mb-10">
             <h1 class="text-4xl md:text-5xl font-black text-white mb-2 uppercase tracking-tighter">
-                📅 Jadwal Tayang
+                📅 {{ __('app.schedule.title') }}
             </h1>
-            <p class="text-gray-400 text-lg">Jangan lewatkan episode terbaru dari anime favoritmu!</p>
+            <p class="text-gray-400 text-lg">{{ __('app.schedule.subtitle') }}</p>
         </div>
     </div>
 
@@ -20,13 +20,13 @@
             <div class="flex overflow-x-auto gap-3 pb-4 scrollbar-hide">
                 @php
                     $dayNames = [
-                        'Monday' => 'Senin',
-                        'Tuesday' => 'Selasa',
-                        'Wednesday' => 'Rabu',
-                        'Thursday' => 'Kamis',
-                        'Friday' => 'Jumat',
-                        'Saturday' => 'Sabtu',
-                        'Sunday' => 'Minggu',
+                        'Monday' => __('app.days.monday'),
+                        'Tuesday' => __('app.days.tuesday'),
+                        'Wednesday' => __('app.days.wednesday'),
+                        'Thursday' => __('app.days.thursday'),
+                        'Friday' => __('app.days.friday'),
+                        'Saturday' => __('app.days.saturday'),
+                        'Sunday' => __('app.days.sunday'),
                     ];
                 @endphp
                 @foreach($days as $day)
@@ -49,13 +49,23 @@
                 @if($schedulesByDay[$day]->count() > 0)
                     <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                         @foreach($schedulesByDay[$day] as $schedule)
+                            @php $shouldBlurSchedule = $schedule->anime->shouldBlurPoster(); @endphp
                             <div class="bg-[#1a1d24] rounded-2xl border border-white/10 overflow-hidden group hover:border-red-600/50 transition-all duration-300 hover:shadow-xl hover:shadow-red-600/20 flex flex-col h-full">
                                 <!-- Poster -->
                                 <div class="relative aspect-[3/4] overflow-hidden bg-gray-800">
-                                    <a href="{{ route('detail', $schedule->anime) }}" class="block w-full h-full">
+                                    <a href="{{ $shouldBlurSchedule ? '#' : route('detail', $schedule->anime) }}" class="block w-full h-full" @if($shouldBlurSchedule) onclick="event.preventDefault(); alert('Konten 18+ - Anda harus login dan berusia minimal 18 tahun untuk mengakses.')" @endif>
                                         <img src="{{ $schedule->anime->poster_image ? asset('storage/' . $schedule->anime->poster_image) : asset('images/placeholder.png') }}" 
                                              alt="{{ $schedule->anime->title }}"
-                                             class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                                             class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                             style="{{ $shouldBlurSchedule ? 'filter: blur(20px); transform: scale(1.1);' : '' }}">
+                                        
+                                        @if($shouldBlurSchedule)
+                                        <!-- Adult Content Overlay -->
+                                        <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white z-10">
+                                            <span class="text-3xl font-black text-red-500">18+</span>
+                                            <span class="text-xs mt-1">Konten Dewasa</span>
+                                        </div>
+                                        @endif
                                         
                                         <!-- Overlay -->
                                         <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -75,7 +85,7 @@
                                 <!-- Info -->
                                 <div class="flex-1 p-5 flex flex-col">
                                     <!-- Title -->
-                                    <a href="{{ route('detail', $schedule->anime) }}" class="text-lg font-black text-white hover:text-red-500 transition-colors duration-300 mb-3 line-clamp-2">
+                                    <a href="{{ $shouldBlurSchedule ? '#' : route('detail', $schedule->anime) }}" class="text-lg font-black text-white hover:text-red-500 transition-colors duration-300 mb-3 line-clamp-2" @if($shouldBlurSchedule) onclick="event.preventDefault(); alert('Konten 18+ - Anda harus login dan berusia minimal 18 tahun untuk mengakses.')" @endif>
                                         {{ $schedule->anime->title }}
                                     </a>
                                     

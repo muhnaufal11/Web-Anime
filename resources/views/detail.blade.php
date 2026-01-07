@@ -6,6 +6,8 @@
     $poster = $anime->poster_image ? asset('storage/' . $anime->poster_image) : asset('images/placeholder.png');
     $firstEpisode = $anime->episodes->first();
     $canonicalUrl = $anime->slug ? route('detail', ['anime' => $anime->slug]) : url()->current();
+    $shouldBlurDetail = $anime->shouldBlurPoster();
+    $isAdultContent = $anime->isAdultContent();
 @endphp
 @section('meta_description', $detailDescription)
 @section('canonical', $canonicalUrl)
@@ -42,7 +44,8 @@ if ($firstEpisode) {
         <div class="absolute inset-0 opacity-20">
             <img src="{{ $anime->poster_image ? asset('storage/' . $anime->poster_image) : asset('images/placeholder.png') }}" 
                  alt="{{ $anime->title }}"
-                 class="w-full h-full object-cover bg-gray-800">
+                 class="w-full h-full object-cover bg-gray-800"
+                 style="{{ $shouldBlurDetail ? 'filter: blur(40px);' : '' }}">
             <div class="absolute inset-0 bg-gradient-to-r from-[#0f1115] via-[#0f1115]/50 to-transparent"></div>
         </div>
 
@@ -51,15 +54,45 @@ if ($firstEpisode) {
                 <!-- Poster -->
                 <div class="md:col-span-1">
                     <div class="md:sticky md:top-28 flex flex-col items-center md:items-stretch">
-                        <img src="{{ $anime->poster_image ? asset('storage/' . $anime->poster_image) : asset('images/placeholder.png') }}" 
-                             alt="{{ $anime->title }}"
-                             class="w-48 sm:w-64 md:w-full rounded-2xl shadow-2xl shadow-black/50 border-2 border-white/10 hover:border-red-600/50 transition-all bg-gray-800">
+                        <div class="relative overflow-hidden rounded-2xl">
+                            <img src="{{ $anime->poster_image ? asset('storage/' . $anime->poster_image) : asset('images/placeholder.png') }}" 
+                                 alt="{{ $anime->title }}"
+                                 class="w-48 sm:w-64 md:w-full shadow-2xl shadow-black/50 border-2 border-white/10 hover:border-red-600/50 transition-all bg-gray-800"
+                                 style="{{ $shouldBlurDetail ? 'filter: blur(20px); transform: scale(1.1);' : '' }}">
+                            @if($shouldBlurDetail)
+                            <!-- Adult Content Overlay -->
+                            <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white rounded-2xl">
+                                <span class="text-5xl font-black text-red-500">18+</span>
+                                <span class="text-sm mt-2">Konten Dewasa</span>
+                                @guest
+                                <a href="{{ route('auth.login') }}" class="mt-3 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-bold transition">
+                                    Login untuk Lihat
+                                </a>
+                                @else
+                                <span class="mt-2 text-xs text-gray-300">Umur tidak mencukupi</span>
+                                @endguest
+                            </div>
+                            @elseif($isAdultContent)
+                            <!-- 18+ Badge for adults who can view -->
+                            <div class="absolute top-3 right-3 bg-red-600 text-white text-sm font-bold px-2 py-1 rounded">
+                                18+
+                            </div>
+                            @endif
+                        </div>
                         @if($firstEpisode)
+                            @if($shouldBlurDetail)
+                            <button onclick="alert('Konten 18+ - Anda harus login dan berusia minimal 18 tahun untuk mengakses.')" 
+                               class="mt-4 sm:mt-6 w-full flex items-center justify-center px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-gray-600 to-gray-700 text-white font-black rounded-xl uppercase tracking-wide text-sm sm:text-base cursor-not-allowed opacity-70">
+                                <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/></svg>
+                                Konten 18+
+                            </button>
+                            @else
                             <a href="{{ route('watch', ['episode' => $firstEpisode->slug]) }}" 
                                class="mt-4 sm:mt-6 w-full flex items-center justify-center px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-black rounded-xl transition-all transform hover:scale-105 shadow-lg shadow-red-600/30 uppercase tracking-wide text-sm sm:text-base">
                                 <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/></svg>
                                 Tonton
                             </a>
+                            @endif
                         @endif
                     </div>
                 </div>
@@ -144,7 +177,21 @@ if ($firstEpisode) {
                 @if($anime->episodes->count() > 0)
                     <div class="space-y-3">
                         @foreach($anime->episodes as $episode)
-                                     <a href="{{ route('watch', ['episode' => $episode->slug]) }}" 
+                            @if($shouldBlurDetail)
+                            <div onclick="alert('Konten 18+ - Anda harus login dan berusia minimal 18 tahun untuk mengakses.')" 
+                               class="group flex items-center p-5 bg-gradient-to-r from-[#1a1d24] to-[#0f1115] border border-white/10 rounded-2xl cursor-not-allowed opacity-70">
+                                <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-gray-600 to-gray-700 flex items-center justify-center font-black text-white mr-5">
+                                    🔒
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-white font-bold text-lg">
+                                        Episode {{ $episode->episode_number }} - Konten 18+
+                                    </p>
+                                    <p class="text-gray-400 text-sm mt-1">Login dan verifikasi umur untuk menonton</p>
+                                </div>
+                            </div>
+                            @else
+                            <a href="{{ route('watch', ['episode' => $episode->slug]) }}" 
                                class="group flex items-center p-5 bg-gradient-to-r from-[#1a1d24] to-[#0f1115] border border-white/10 hover:border-red-600/50 rounded-2xl transition-all duration-300 hover:shadow-xl hover:shadow-red-600/20">
                                 <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-red-600 to-red-700 flex items-center justify-center font-black text-white mr-5 group-hover:scale-110 transition-transform">
                                     {{ $episode->episode_number }}
@@ -169,6 +216,7 @@ if ($firstEpisode) {
                                     </svg>
                                 </div>
                             </a>
+                            @endif
                         @endforeach
                     </div>
                 @else
@@ -210,16 +258,33 @@ if ($firstEpisode) {
                     <div class="space-y-4">
                         @if($relatedAnimes->count() > 0)
                             @foreach($relatedAnimes as $related)
-                                          <a href="{{ route('detail', ['anime' => $related->slug]) }}" 
+                                @php
+                                    $relatedShouldBlur = $related->shouldBlurPoster();
+                                    $relatedIsAdult = $related->isAdultContent();
+                                @endphp
+                                <a href="{{ route('detail', ['anime' => $related->slug]) }}" 
                                    class="block group">
                                     <div class="relative h-40 bg-[#0f1115] rounded-xl overflow-hidden mb-3 border border-white/10 group-hover:border-red-600/50 transition-all shadow-lg">
                                         <img src="{{ asset('storage/' . $related->poster_image) }}" 
                                              alt="{{ $related->title }}"
-                                             class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300">
+                                             class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                                             style="{{ $relatedShouldBlur ? 'filter: blur(15px); transform: scale(1.1);' : '' }}">
                                         <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                         <div class="absolute top-2 left-2 bg-red-600 text-[10px] font-black px-2 py-1 rounded text-white">
                                             {{ $related->type }}
                                         </div>
+                                        @if($relatedShouldBlur)
+                                        <!-- Adult Content Overlay for related -->
+                                        <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white">
+                                            <span class="text-2xl font-black text-red-500">18+</span>
+                                            <span class="text-xs mt-1">Konten Dewasa</span>
+                                        </div>
+                                        @elseif($relatedIsAdult)
+                                        <!-- 18+ Badge for adults who can view -->
+                                        <div class="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">
+                                            18+
+                                        </div>
+                                        @endif
                                     </div>
                                     <p class="text-white font-bold text-sm group-hover:text-red-500 transition line-clamp-2">{{ $related->title }}</p>
                                     <p class="text-yellow-500 text-sm font-black mt-1">⭐ {{ number_format($related->rating, 1) }}</p>

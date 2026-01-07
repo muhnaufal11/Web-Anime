@@ -4,19 +4,124 @@ namespace App\Filament\Resources\AdminEpisodeLogResource\Pages;
 
 use App\Filament\Resources\AdminEpisodeLogResource;
 use App\Filament\Resources\AdminEpisodeLogResource\Widgets\LogStats;
+use App\Models\User;
+use App\Services\PaymentService;
 use Filament\Forms;
 use Filament\Pages\Actions;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 class ListAdminEpisodeLogs extends ListRecords
 {
     protected static string $resource = AdminEpisodeLogResource::class;
 
-    protected function getHeaderActions(): array
+    protected function getActions(): array
     {
         $user = auth()->user();
 
+        // Get admins with payable amount for checkbox options
+        $adminOptions = [];
+        $adminPayables = [];
+        if ($user?->isSuperAdmin()) {
+            $admins = User::admins()
+                ->where('role', '!=', User::ROLE_SUPERADMIN)
+                ->get();
+            
+            foreach ($admins as $admin) {
+                $calc = $admin->calculateMonthlyPayment(now()->year, now()->month);
+                if ($calc['payable'] > 0) {
+                    $bank = $admin->bank_name ?? $admin->payout_wallet_provider ?? '-';
+                    $accountNumber = $admin->bank_account_number ?? $admin->payout_wallet_number ?? '-';
+                    $holder = $admin->bank_account_holder ?? '-';
+                    
+                    $adminOptions[$admin->id] = $admin->name . ' - Rp ' . number_format($calc['payable'], 0, ',', '.') . 
+                        ' (' . $bank . ' - ' . $accountNumber . ' a.n ' . $holder . ')';
+                    $adminPayables[$admin->id] = $calc['payable'];
+                }
+            }
+        }
+
         return array_filter([
+            // Action untuk proses pembayaran dengan pilih admin & upload bukti
+            Actions\Action::make('processPayments')
+                ->label('Proses Pembayaran')
+                ->color('success')
+                ->icon('heroicon-o-cash')
+                ->visible(fn () => $user?->isSuperAdmin())
+                ->modalHeading('Proses Pembayaran')
+                ->modalWidth('xl')
+                ->form([
+                    Forms\Components\CheckboxList::make('admin_ids')
+                        ->label('Pilih Admin yang Dibayar')
+                        ->options($adminOptions)
+                        ->columns(1)
+                        ->required()
+                        ->bulkToggleable()
+                        ->helperText('Centang admin yang ingin diproses pembayarannya'),
+                    
+                    Forms\Components\FileUpload::make('payment_proof')
+                        ->label('Upload Bukti Pembayaran')
+                        ->image()
+                        ->directory('payment-proofs')
+                        ->visibility('public')
+                        ->maxSize(5120) // 5MB
+                        ->required()
+                        ->helperText('Upload screenshot bukti transfer (max 5MB)'),
+                    
+                    Forms\Components\Textarea::make('notes')
+                        ->label('Catatan Pembayaran')
+                        ->rows(2)
+                        ->placeholder('Catatan tambahan (opsional)'),
+                ])
+                ->action(function (array $data) use ($adminPayables) {
+                    $selectedAdmins = $data['admin_ids'] ?? [];
+                    $paymentProof = $data['payment_proof'] ?? null;
+                    $notes = $data['notes'] ?? '';
+                    
+                    if (empty($selectedAdmins)) {
+                        Notification::make()
+                            ->title('Error')
+                            ->danger()
+                            ->body('Pilih minimal 1 admin untuk diproses')
+                            ->send();
+                        return;
+                    }
+                    
+                    $service = app(PaymentService::class);
+                    $result = $service->processPaymentsForAdmins($selectedAdmins, $paymentProof);
+                    
+                    // Send to Discord
+                    $this->sendPaymentToDiscord($selectedAdmins, $paymentProof, $result, $notes);
+                    
+                    Notification::make()
+                        ->title('Pembayaran Diproses')
+                        ->success()
+                        ->body("Diproses: {$result['processed']} admin. Total dibayar: Rp " . 
+                               number_format($result['total_paid'], 0, ',', '.'))
+                        ->send();
+                }),
+            
+            // Action untuk lihat detail per admin (superadmin only)
+            Actions\Action::make('adminSummary')
+                ->label('Ringkasan Admin')
+                ->color('primary')
+                ->icon('heroicon-o-users')
+                ->visible(fn () => $user?->isSuperAdmin())
+                ->modalHeading('Ringkasan Pembayaran Admin')
+                ->modalContent(function () {
+                    $admins = User::admins()
+                        ->where('role', '!=', User::ROLE_SUPERADMIN)
+                        ->get();
+                    
+                    return view('filament.components.admin-payment-summary', [
+                        'admins' => $admins,
+                    ]);
+                })
+                ->modalButton('Tutup')
+                ->action(fn () => null),
+            
             Actions\Action::make('updateBank')
                 ->label('Update Rekening')
                 ->color('primary')
@@ -77,6 +182,79 @@ class ListAdminEpisodeLogs extends ListRecords
                 }),
             $user && $user->isSuperAdmin() ? Actions\CreateAction::make() : null,
         ]);
+    }
+
+    /**
+     * Send payment notification to Discord webhook
+     */
+    protected function sendPaymentToDiscord(array $adminIds, ?string $paymentProof, array $result, string $notes = ''): void
+    {
+        $webhookUrl = 'https://discordapp.com/api/webhooks/1458015594799431700/ywvYZN0fSqWpoDUfgtdNsmcOGCRHdLsXD1EI8c3EcdpHUwoAaoM47ZkaGfubHNviZbb0';
+        
+        // Build admin list
+        $adminList = '';
+        $admins = User::whereIn('id', $adminIds)->get();
+        foreach ($admins as $admin) {
+            $calc = $admin->calculateMonthlyPayment(now()->year, now()->month);
+            $bank = $admin->bank_name ?? $admin->payout_wallet_provider ?? '-';
+            $account = $admin->bank_account_number ?? $admin->payout_wallet_number ?? '-';
+            $holder = $admin->bank_account_holder ?? '-';
+            $adminList .= "• **{$admin->name}** - Rp " . number_format($calc['payable'], 0, ',', '.') . "\n";
+            $adminList .= "  └ {$bank} | {$account} | {$holder}\n";
+        }
+
+        $embed = [
+            'title' => '💰 Pembayaran Admin Nipnime',
+            'color' => 0x00FF00, // Green
+            'fields' => [
+                [
+                    'name' => '📅 Tanggal',
+                    'value' => now()->format('d F Y H:i'),
+                    'inline' => true,
+                ],
+                [
+                    'name' => '👥 Jumlah Admin',
+                    'value' => $result['processed'] . ' admin',
+                    'inline' => true,
+                ],
+                [
+                    'name' => '💵 Total Dibayar',
+                    'value' => 'Rp ' . number_format($result['total_paid'], 0, ',', '.'),
+                    'inline' => true,
+                ],
+                [
+                    'name' => '📋 Detail Pembayaran',
+                    'value' => $adminList ?: '-',
+                    'inline' => false,
+                ],
+            ],
+            'footer' => [
+                'text' => 'Nipnime Payment System',
+            ],
+            'timestamp' => now()->toIso8601String(),
+        ];
+
+        if ($notes) {
+            $embed['fields'][] = [
+                'name' => '📝 Catatan',
+                'value' => $notes,
+                'inline' => false,
+            ];
+        }
+
+        // If payment proof exists, add image
+        if ($paymentProof) {
+            $imageUrl = url('storage/' . $paymentProof);
+            $embed['image'] = ['url' => $imageUrl];
+        }
+
+        try {
+            Http::post($webhookUrl, [
+                'embeds' => [$embed],
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Discord webhook failed: ' . $e->getMessage());
+        }
     }
 
     protected function getHeaderWidgets(): array

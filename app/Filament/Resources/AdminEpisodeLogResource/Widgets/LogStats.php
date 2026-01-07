@@ -13,6 +13,7 @@ class LogStats extends StatsOverviewWidget
         $user = auth()->user();
         $query = AdminEpisodeLog::query();
 
+        // For non-superadmin, show only their own data
         if ($user && !$user->isSuperAdmin()) {
             $query->where('user_id', $user->id);
         }
@@ -22,7 +23,7 @@ class LogStats extends StatsOverviewWidget
         $paid = (clone $query)->where('status', AdminEpisodeLog::STATUS_PAID)->sum('amount');
         $totalUnpaid = $pending + $approved;
 
-        return [
+        $cards = [
             Card::make('Belum Dibayar', 'IDR ' . number_format($totalUnpaid, 0, ',', '.'))
                 ->description('Pending + Approved')
                 ->descriptionIcon('heroicon-o-clock')
@@ -40,5 +41,69 @@ class LogStats extends StatsOverviewWidget
                 ->descriptionIcon('heroicon-o-currency-dollar')
                 ->color('success'),
         ];
+
+        // Tambah info limit & rollover untuk admin (non-superadmin)
+        if ($user && $user->isAdmin() && !$user->isSuperAdmin()) {
+            $calc = $user->calculateMonthlyPayment(now()->year, now()->month);
+            $limit = $user->getMonthlyLimit();
+            $rollover = $user->rollover_balance ?? 0;
+            $daysUntilPayday = $user->getDaysUntilPayday();
+            
+            // Tambah card limit info
+            $cards[] = Card::make('Limit Bulanan', $limit ? 'IDR ' . number_format($limit, 0, ',', '.') : '∞ Unlimited')
+                ->description($user->getAdminLevelLabel())
+                ->descriptionIcon('heroicon-o-shield-check')
+                ->color('primary');
+            
+            // Card yang bisa dicairkan bulan ini
+            $cards[] = Card::make('Dapat Dicairkan', 'IDR ' . number_format($calc['payable'], 0, ',', '.'))
+                ->description($daysUntilPayday == 0 ? '🎉 Hari ini gajian!' : $daysUntilPayday . ' hari lagi (tgl 25)')
+                ->descriptionIcon('heroicon-o-cash')
+                ->color('success');
+            
+            // Rollover
+            if ($rollover > 0 || $calc['rollover_to_next'] > 0) {
+                $cards[] = Card::make('Rollover', 'IDR ' . number_format($rollover + $calc['rollover_to_next'], 0, ',', '.'))
+                    ->description('Dibayar bulan depan')
+                    ->descriptionIcon('heroicon-o-arrow-right')
+                    ->color('danger');
+            }
+        }
+
+        // Superadmin: tampilkan summary semua admin
+        if ($user && $user->isSuperAdmin()) {
+            $totalAdmins = \App\Models\User::admins()
+                ->where('role', '!=', \App\Models\User::ROLE_SUPERADMIN)
+                ->count();
+            
+            $totalPayable = 0;
+            $totalRollover = 0;
+            
+            $admins = \App\Models\User::admins()
+                ->where('role', '!=', \App\Models\User::ROLE_SUPERADMIN)
+                ->get();
+            
+            foreach ($admins as $admin) {
+                $calc = $admin->calculateMonthlyPayment(now()->year, now()->month);
+                $totalPayable += $calc['payable'];
+                $totalRollover += $calc['rollover_to_next'];
+            }
+            
+            $daysUntilPayday = now()->day <= 25 ? 25 - now()->day : now()->daysInMonth - now()->day + 25;
+            
+            $cards[] = Card::make('Total Dapat Dibayar', 'IDR ' . number_format($totalPayable, 0, ',', '.'))
+                ->description($totalAdmins . ' admin | ' . ($daysUntilPayday == 0 ? 'Hari ini!' : $daysUntilPayday . ' hari lagi'))
+                ->descriptionIcon('heroicon-o-cash')
+                ->color('success');
+            
+            if ($totalRollover > 0) {
+                $cards[] = Card::make('Total Rollover', 'IDR ' . number_format($totalRollover, 0, ',', '.'))
+                    ->description('Rollover ke bulan depan')
+                    ->descriptionIcon('heroicon-o-arrow-right')
+                    ->color('danger');
+            }
+        }
+
+        return $cards;
     }
 }

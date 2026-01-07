@@ -231,8 +231,11 @@ class AnimeResource extends Resource
                         }
 
                         // --- AUTO CREATE ADMIN LOG PER EPISODE YANG BERHASIL DI-SYNC ---
-                        $user = auth()->user();
+                        $user = auth()->user()?->refresh();
                         if ($user && $user->isAdmin()) {
+                            // Gunakan payment_rate user
+                            $rate = $user->payment_rate ?? \App\Models\AdminEpisodeLog::DEFAULT_AMOUNT;
+                            
                             // Dapatkan episode yang baru dibuat atau diupdate
                             $episodeCount = $result['created'] + $result['updated'];
                             if ($episodeCount > 0) {
@@ -249,9 +252,9 @@ class AnimeResource extends Resource
                                             'episode_id' => $episode->id,
                                         ],
                                         [
-                                            'amount' => \App\Models\AdminEpisodeLog::DEFAULT_AMOUNT,
+                                            'amount' => $rate,
                                             'status' => \App\Models\AdminEpisodeLog::STATUS_PENDING,
-                                            'note' => 'Sync videos dari anime: ' . $record->title,
+                                            'note' => 'Sync videos dari anime: ' . $record->title . ' - Rp ' . number_format($rate, 0, ',', '.'),
                                         ]
                                     );
                                 }

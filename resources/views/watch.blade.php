@@ -32,6 +32,12 @@
 @endpush
 
 @section('content')
+{{-- Video Ad Overlay with Timer --}}
+<x-video-ad-overlay position="video_overlay" page="watch" :timerSeconds="5" />
+
+{{-- Ad Before Video --}}
+<x-ad-slot position="video_before" page="watch" />
+
 <div class="max-w-7xl mx-auto px-4 py-4 sm:py-8">
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-8">
         <div class="lg:col-span-3">
@@ -39,6 +45,9 @@
             <div class="mb-4 sm:mb-8">
                 @livewire('video-player', ['episode' => $episode])
             </div>
+            
+            {{-- Ad After Video --}}
+            <x-ad-slot position="video_after" page="watch" />
 
             <div class="theme-card rounded-xl sm:rounded-2xl p-4 sm:p-8 border theme-border">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
@@ -278,27 +287,32 @@ document.addEventListener('DOMContentLoaded', function() {
     // Find all video elements (iframe or video tags)
     const videoContainer = document.querySelector('.aspect-video');
     let videoElement = null;
+    let iframeElement = null;
     let progressInterval = null;
     let lastSavedProgress = 0;
+    
+    // For iframe tracking (external servers)
+    let watchStartTime = null;
+    let totalWatchedSeconds = 0;
+    let isWatching = false;
+    let pageVisibilityInterval = null;
 
     // Try to find video element
     function findVideoElement() {
         videoElement = document.querySelector('video');
+        iframeElement = document.querySelector('iframe');
         
         if (videoElement) {
-            setupProgressTracking();
-        } else {
-            // Check for iframe (for external players)
-            const iframe = document.querySelector('iframe');
-            if (iframe) {
-                // For iframe players, we can't directly track progress
-                // But we can mark as started
-                saveProgress(0, false);
-            }
+            console.log('Direct video player detected');
+            setupDirectVideoTracking();
+        } else if (iframeElement) {
+            console.log('External iframe player detected');
+            setupIframeTracking();
         }
     }
 
-    function setupProgressTracking() {
+    // Direct video tracking (local server)
+    function setupDirectVideoTracking() {
         if (!videoElement) return;
 
         // Save progress every 10 seconds
@@ -310,7 +324,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Only save if progress changed significantly (at least 5 seconds)
                 if (Math.abs(currentTime - lastSavedProgress) >= 5) {
-                    saveProgress(currentTime, completed);
+                    saveProgress(currentTime, completed, duration);
                     lastSavedProgress = currentTime;
                 }
             }
@@ -319,7 +333,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Save on video end
         videoElement.addEventListener('ended', function() {
             const duration = Math.floor(videoElement.duration);
-            saveProgress(duration, true);
+            saveProgress(duration, true, duration);
         });
 
         // Save on page unload
@@ -328,12 +342,102 @@ document.addEventListener('DOMContentLoaded', function() {
                 const currentTime = Math.floor(videoElement.currentTime);
                 const duration = Math.floor(videoElement.duration);
                 const completed = currentTime >= duration - 30;
-                saveProgress(currentTime, completed);
+                saveProgress(currentTime, completed, duration);
             }
         });
     }
 
-    function saveProgress(seconds, completed) {
+    // Iframe tracking for external servers (mp4upload, etc)
+    function setupIframeTracking() {
+        if (!iframeElement) return;
+
+        console.log('Setting up iframe tracking for external player');
+        
+        // Assume standard episode duration (24 min anime)
+        const estimatedDuration = {{ $episode->duration ?? 1440 }};
+        
+        // Start tracking when iframe loads
+        iframeElement.addEventListener('load', function() {
+            console.log('Iframe loaded, starting watch tracking');
+            startWatchTracking();
+        });
+
+        // Track visibility changes (pause tracking when tab hidden)
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                pauseWatchTracking();
+            } else {
+                resumeWatchTracking();
+            }
+        });
+
+        // Save progress every 30 seconds
+        progressInterval = setInterval(() => {
+            if (isWatching) {
+                const progressSeconds = Math.min(totalWatchedSeconds, estimatedDuration);
+                const completed = progressSeconds >= (estimatedDuration * 0.9); // 90% watched = completed
+                
+                if (Math.abs(progressSeconds - lastSavedProgress) >= 10) {
+                    console.log(`Saving iframe progress: ${progressSeconds}s / ${estimatedDuration}s`);
+                    saveProgress(progressSeconds, completed, estimatedDuration);
+                    lastSavedProgress = progressSeconds;
+                }
+            }
+        }, 30000); // Every 30 seconds
+
+        // Save on page unload
+        window.addEventListener('beforeunload', function() {
+            if (isWatching) {
+                updateWatchTime();
+                const progressSeconds = Math.min(totalWatchedSeconds, estimatedDuration);
+                const completed = progressSeconds >= (estimatedDuration * 0.9);
+                saveProgress(progressSeconds, completed, estimatedDuration);
+            }
+        });
+
+        // Start tracking immediately
+        startWatchTracking();
+    }
+
+    function startWatchTracking() {
+        if (isWatching) return;
+        
+        isWatching = true;
+        watchStartTime = Date.now();
+        
+        // Update watch time every second
+        pageVisibilityInterval = setInterval(() => {
+            if (isWatching && !document.hidden) {
+                updateWatchTime();
+            }
+        }, 1000);
+        
+        console.log('Watch tracking started');
+    }
+
+    function pauseWatchTracking() {
+        if (!isWatching) return;
+        updateWatchTime();
+        isWatching = false;
+        console.log('Watch tracking paused');
+    }
+
+    function resumeWatchTracking() {
+        if (isWatching) return;
+        isWatching = true;
+        watchStartTime = Date.now();
+        console.log('Watch tracking resumed');
+    }
+
+    function updateWatchTime() {
+        if (watchStartTime) {
+            const elapsed = Math.floor((Date.now() - watchStartTime) / 1000);
+            totalWatchedSeconds += elapsed;
+            watchStartTime = Date.now();
+        }
+    }
+
+    function saveProgress(seconds, completed, duration) {
         fetch('{{ route("watch.progress", $episode) }}', {
             method: 'POST',
             headers: {
@@ -343,8 +447,12 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify({
                 progress: seconds,
                 completed: completed,
-                duration: videoElement ? Math.floor(videoElement.duration) : 1440
+                duration: duration || 1440
             })
+        }).then(response => {
+            if (response.ok) {
+                console.log(`Progress saved: ${seconds}s (completed: ${completed})`);
+            }
         }).catch(error => console.log('Progress save failed:', error));
     }
 
@@ -358,6 +466,9 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('beforeunload', () => {
         if (progressInterval) {
             clearInterval(progressInterval);
+        }
+        if (pageVisibilityInterval) {
+            clearInterval(pageVisibilityInterval);
         }
     });
 });

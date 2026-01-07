@@ -15,6 +15,7 @@ use App\Http\Controllers\CommentController;
 use App\Http\Controllers\AnimeRequestController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\SitemapController;
+use App\Http\Controllers\LanguageController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,13 +28,22 @@ use App\Http\Controllers\SitemapController;
 |
 */
 
+// Language Switch
+Route::get('/language/{locale}', [LanguageController::class, 'switch'])->name('language.switch');
+
+// Filament logout GET handler (redirect to login if accessed via GET)
+Route::get('/filament/logout', function () {
+    return redirect('/admin/login');
+});
+
 // Public Routes (No Auth Required)
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/search', [HomeController::class, 'search'])->name('search');
+Route::get('/api/search/suggestions', [HomeController::class, 'searchSuggestions'])->name('search.suggestions');
 Route::get('/latest-episodes', [HomeController::class, 'latestEpisodes'])->name('latest-episodes');
 Route::get('/schedule', [ScheduleController::class, 'index'])->name('schedule');
 Route::get('/anime/{anime:slug}', [DetailController::class, 'show'])->name('detail');
-Route::get('/watch/{episode:slug}', [WatchController::class, 'show'])->name('watch');
+Route::get('/watch/{episode:slug}', [WatchController::class, 'show'])->name('watch')->middleware('adult.content');
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 
 // Legal Pages
@@ -50,11 +60,17 @@ Route::get('/api/video/proxy/external', [VideoProxyController::class, 'proxyExte
 // Video Source API (Protected)
 Route::post('/api/video/source', [VideoSourceController::class, 'getSource'])->name('video.source');
 
+// Video Subtitle Extraction API (for MKV files)
+Route::get('/api/video/subtitle/{token}', [VideoSourceController::class, 'getSubtitle'])->name('video.subtitle');
+
 // Player proxy page (hide external URL in parent HTML)
 Route::get('/player/{token}', [PlayerProxyController::class, 'show'])->name('player.proxy');
 
-// Stream proxy (short-lived signed redirect)
-Route::get('/stream/{token}', [StreamProxyController::class, 'redirect'])->name('stream.proxy')->middleware('signed');
+// Extracted video proxy (for ad-free playback) - MUST be before stream.proxy
+Route::match(['get', 'options'], '/stream/extracted/{token}', [StreamProxyController::class, 'proxyExtracted'])->name('stream.extracted')->middleware('signed');
+
+// Stream proxy (short-lived signed redirect) - supports GET and OPTIONS for CORS
+Route::match(['get', 'options'], '/stream/{token}', [StreamProxyController::class, 'redirect'])->name('stream.proxy')->middleware('signed');
 
 
 // Auth Routes

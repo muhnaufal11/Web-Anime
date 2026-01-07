@@ -29,15 +29,19 @@ class CreateEpisode extends CreateRecord
         }
 
         // Catat log episode yang dibuat admin
+        // Gunakan payment_rate user, refresh dulu untuk dapat data terbaru
+        $user->refresh();
+        $rate = $user->payment_rate ?? AdminEpisodeLog::DEFAULT_AMOUNT;
+        
         AdminEpisodeLog::updateOrCreate(
             [
                 'user_id' => $user->id,
                 'episode_id' => $this->record->id,
             ],
             [
-                'amount' => AdminEpisodeLog::DEFAULT_AMOUNT,
+                'amount' => $rate,
                 'status' => AdminEpisodeLog::STATUS_PENDING,
-                'note' => 'Episode baru dibuat',
+                'note' => 'Episode baru dibuat - Rp ' . number_format($rate, 0, ',', '.'),
             ]
         );
     }
