@@ -261,6 +261,7 @@
                                 <th class="px-4 py-2 text-left">Status</th>
                                 <th class="px-4 py-2 text-center">Episodes</th>
                                 <th class="px-4 py-2 text-center">Servers</th>
+                                <th class="px-4 py-2 text-center">Synced</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -286,6 +287,21 @@
                                 </td>
                                 <td class="px-4 py-2 text-center font-medium">{{ $result['episodes'] }}</td>
                                 <td class="px-4 py-2 text-center font-medium">{{ $result['servers'] }}</td>
+                                <td class="px-4 py-2 text-center">
+                                    @if($result['success'])
+                                        @if($result['synced'] ?? false)
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                                💾 Yes
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                                ❌ No Match
+                                            </span>
+                                        @endif
+                                    @else
+                                        <span class="text-gray-400">-</span>
+                                    @endif
+                                </td>
                             </tr>
                             @endforeach
                         </tbody>
@@ -299,10 +315,12 @@
         <div class="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
             <h4 class="font-semibold text-yellow-800 dark:text-yellow-200 mb-2">💡 Tips</h4>
             <ul class="text-sm text-yellow-700 dark:text-yellow-300 space-y-1">
-                <li>• Paste URL anime dari AnimeSail (contoh: https://154.26.137.28/anime/one-piece/)</li>
-                <li>• Klik "Fetch Episode List" untuk melihat daftar episode dulu</li>
+                <li>• <strong>Single Anime:</strong> Masukkan URL anime AnimeSail dan pilih anime lokal untuk sync</li>
+                <li>• <strong>Batch Scrape:</strong> Tambah multiple entries dengan URL + anime pilihan, klik "➕ Add Anime Entry"</li>
+                <li>• Anime selection di batch mode akan otomatis sync servers ke database saat scrape selesai</li>
+                <li>• Enable "Sync to Database" untuk auto-save servers ke database sesuai anime yang dipilih</li>
+                <li>• Klik "Fetch Episode List" untuk melihat daftar episode dulu (Single Anime mode only)</li>
                 <li>• "Fetch Video Servers" akan mengambil embed URL (lebih lambat tapi lengkap)</li>
-                <li>• Enable "Sync to Database" untuk menyimpan servers ke database lokal</li>
                 <li>• Server internal AnimeSail (IP 154.26.137.28) otomatis di-skip</li>
             </ul>
         </div>

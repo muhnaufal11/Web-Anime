@@ -37,6 +37,7 @@ class AnimeSailScrape extends Page implements HasForms
     public string $scrapeType = 'anime';
     public string $animeUrl = '';
     public string $batchUrls = '';
+    public array $batchEntries = [];
     public ?int $localAnimeId = null;
     public int $limit = 0;
     public int $delay = 500;
@@ -82,15 +83,38 @@ class AnimeSailScrape extends Page implements HasForms
                 ->visible(fn ($get) => $get('scrapeType') !== 'batch')
                 ->helperText('Paste the anime or episode URL from AnimeSail'),
             
-            \Filament\Forms\Components\Textarea::make('batchUrls')
-                ->label('Batch URLs (one per line)')
+            \Filament\Forms\Components\Repeater::make('batchEntries')
+                ->label('Batch Entries')
                 ->required(fn ($get) => $get('scrapeType') === 'batch')
                 ->visible(fn ($get) => $get('scrapeType') === 'batch')
-                ->rows(10)
-                ->placeholder('https://154.26.137.28/anime/anime1/
-https://154.26.137.28/anime/anime2/
-https://154.26.137.28/anime/anime3/')
-                ->helperText('Paste multiple anime URLs, one per line'),
+                ->schema([
+                    TextInput::make('url')
+                        ->label('AnimeSail URL')
+                        ->required()
+                        ->url()
+                        ->placeholder('https://154.26.137.28/anime/one-piece/')
+                        ->columnSpan('full'),
+                    
+                    Select::make('animeId')
+                        ->label('Match to Local Anime')
+                        ->searchable()
+                        ->getSearchResultsUsing(function (string $search): array {
+                            if (strlen($search) < 2) {
+                                return [];
+                            }
+                            return Anime::where('title', 'like', "%{$search}%")
+                                ->orderBy('title')
+                                ->limit(50)
+                                ->pluck('title', 'id')
+                                ->toArray();
+                        })
+                        ->getOptionLabelUsing(fn ($value): ?string => Anime::find($value)?->title)
+                        ->columnSpan('full')
+                        ->helperText('Type at least 2 characters to search anime'),
+                ])
+                ->columns(1)
+                ->addActionLabel('➕ Add Anime Entry')
+                ->helperText('Masukkan URL dan pilih anime lokal untuk setiap entry'),
             
             Select::make('localAnimeId')
                 ->label('Match to Local Anime (Optional)')
@@ -106,7 +130,7 @@ https://154.26.137.28/anime/anime3/')
                         ->toArray();
                 })
                 ->getOptionLabelUsing(fn ($value): ?string => Anime::find($value)?->title)
-                ->visible(fn ($get) => $get('syncToDatabase'))
+                ->visible(fn ($get) => $get('syncToDatabase') && $get('scrapeType') !== 'batch')
                 ->helperText('Type at least 2 characters to search anime'),
             
             Toggle::make('fetchServers')
@@ -118,7 +142,7 @@ https://154.26.137.28/anime/anime3/')
                 ->label('Sync to Database')
                 ->default(false)
                 ->reactive()
-                ->helperText('Automatically save servers to local database'),
+                ->helperText('Automatically save servers to local database based on anime title'),
             
             Toggle::make('autoCreateEpisode')
                 ->label('Auto Create Episode')
@@ -504,13 +528,16 @@ https://154.26.137.28/anime/anime3/')
         return false;
     }
 
-    protected function syncServersToDatabase(array $servers, ?int $episodeNumber = null, ?string $episodeTitle = null): void
+    protected function syncServersToDatabase(array $servers, ?int $episodeNumber = null, ?string $episodeTitle = null, ?int $animeId = null): void
     {
-        if (!$this->localAnimeId) {
+        // Use provided animeId or fall back to localAnimeId
+        $animeId = $animeId ?? $this->localAnimeId;
+        
+        if (!$animeId) {
             return;
         }
 
-        $query = Episode::where('anime_id', $this->localAnimeId);
+        $query = Episode::where('anime_id', $animeId);
         
         if ($episodeNumber) {
             $query->where('episode_number', $episodeNumber);
@@ -597,19 +624,40 @@ https://154.26.137.28/anime/anime3/')
     public function scrapeBatch(): void
     {
         $this->validate([
-            'batchUrls' => 'required',
+            'batchEntries' => 'required|array|min:1',
+            'batchEntries.*.url' => 'required|url',
         ]);
 
-        $urls = array_filter(
-            array_map('trim', explode("\n", $this->batchUrls)),
-            fn ($url) => !empty($url) && filter_var($url, FILTER_VALIDATE_URL)
-        );
+        $urlAnimeMap = [];
+        foreach ($this->batchEntries as $entry) {
+            $url = $entry['url'] ?? null;
+            $animeId = $entry['animeId'] ?? null;
+            
+            if (!$url || !filter_var($url, FILTER_VALIDATE_URL)) {
+                continue;
+            }
 
-        if (empty($urls)) {
+            // Get anime title if animeId provided
+            $animeTitle = null;
+            if ($animeId) {
+                $anime = Anime::find($animeId);
+                if ($anime) {
+                    $animeTitle = $anime->title;
+                }
+            }
+
+            $urlAnimeMap[] = [
+                'url' => $url,
+                'title' => $animeTitle,
+                'animeId' => $animeId,
+            ];
+        }
+
+        if (empty($urlAnimeMap)) {
             Notification::make()
-                ->title('Invalid URLs')
+                ->title('Invalid Entries')
                 ->danger()
-                ->body('Please enter valid URLs, one per line')
+                ->body('Please enter valid anime entries')
                 ->send();
             return;
         }
@@ -619,18 +667,24 @@ https://154.26.137.28/anime/anime3/')
         $this->batchResults = [];
         $this->scrapeProgress = 0;
         $this->scrapeStatus = 'running';
-        $this->batchTotal = count($urls);
+        $this->batchTotal = count($urlAnimeMap);
         $this->batchCurrent = 0;
 
-        $this->addLog('🚀 Starting batch scrape for ' . count($urls) . ' animes...');
+        $this->addLog('🚀 Starting batch scrape for ' . count($urlAnimeMap) . ' animes...');
         $scraper = new AnimeSailScraper();
 
         try {
-            foreach ($urls as $index => $url) {
+            foreach ($urlAnimeMap as $index => $item) {
                 $this->batchCurrent = $index + 1;
-                $this->scrapeProgress = (int)(($index / count($urls)) * 100);
+                $this->scrapeProgress = (int)(($index / count($urlAnimeMap)) * 100);
+                $url = $item['url'];
+                $animeTitle = $item['title'];
+                $animeId = $item['animeId'];
 
                 $this->addLog("\n🎬 [{$this->batchCurrent}/{$this->batchTotal}] Fetching: {$url}");
+                if ($animeTitle) {
+                    $this->addLog("  📺 Matched Anime: {$animeTitle}");
+                }
 
                 try {
                     $episodeResult = $scraper->fetchEpisodeList($url);
@@ -639,6 +693,7 @@ https://154.26.137.28/anime/anime3/')
                         $this->addLog("❌ Error: " . ($episodeResult['error'] ?? 'Unknown'));
                         $this->batchResults[] = [
                             'url' => $url,
+                            'title' => $animeTitle,
                             'success' => false,
                             'error' => $episodeResult['error'] ?? 'Unknown error',
                             'episodes' => 0,
@@ -651,7 +706,7 @@ https://154.26.137.28/anime/anime3/')
                     $animeInfo = $episodeResult['anime_info'];
                     $totalServers = 0;
 
-                    $this->addLog("✅ Found " . count($episodes) . " episodes - " . ($animeInfo['title'] ?? 'Unknown'));
+                    $this->addLog("✅ Found " . count($episodes) . " episodes");
 
                     // Apply limit per anime
                     if ($this->limit > 0 && $this->limit < count($episodes)) {
@@ -665,7 +720,7 @@ https://154.26.137.28/anime/anime3/')
                         $serverResult = $scraper->fetchEpisodeServers($episode['url']);
 
                         if ($serverResult['success']) {
-                            $validServers = 0;
+                            $validServers = [];
 
                             foreach ($serverResult['servers'] as $server) {
                                 $embedUrl = $server['url'] ?? null;
@@ -682,13 +737,21 @@ https://154.26.137.28/anime/anime3/')
                                 }
 
                                 if (!empty($embedUrl) && !$this->isInternalServer($embedUrl)) {
-                                    $validServers++;
+                                    $validServers[] = [
+                                        'name' => $server['name'],
+                                        'url' => $embedUrl,
+                                    ];
                                     $totalServers++;
                                 }
                             }
 
-                            if ($validServers > 0) {
-                                $this->addLog("  ✅ Episode {$episodeNumber}: {$validServers} servers");
+                            if (count($validServers) > 0) {
+                                $this->addLog("  ✅ Episode {$episodeNumber}: " . count($validServers) . " servers");
+
+                                // Sync to database if anime matched and syncToDatabase enabled
+                                if ($this->syncToDatabase && $animeId && !empty($validServers)) {
+                                    $this->syncServersToDatabase($validServers, $episodeNumber, $episode['title'] ?? null, $animeId);
+                                }
                             }
                         }
 
@@ -697,18 +760,24 @@ https://154.26.137.28/anime/anime3/')
 
                     $this->batchResults[] = [
                         'url' => $url,
+                        'title' => $animeTitle,
                         'success' => true,
-                        'title' => $animeInfo['title'] ?? 'Unknown',
+                        'matched' => $animeId ? true : false,
                         'episodes' => count($episodes),
                         'servers' => $totalServers,
+                        'synced' => $this->syncToDatabase && $animeId,
                     ];
 
                     $this->addLog("✅ Complete: {$totalServers} servers from " . count($episodes) . " episodes");
+                    if ($this->syncToDatabase && $animeId) {
+                        $this->addLog("  💾 Synced to database!");
+                    }
 
                 } catch (\Exception $e) {
                     $this->addLog("❌ Exception: " . $e->getMessage());
                     $this->batchResults[] = [
                         'url' => $url,
+                        'title' => $animeTitle,
                         'success' => false,
                         'error' => $e->getMessage(),
                         'episodes' => 0,
