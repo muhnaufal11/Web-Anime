@@ -12,6 +12,7 @@ use Illuminate\Validation\Rules\Password;
 use App\Mail\OtpVerificationMail;
 use Illuminate\Support\Facades\Log;
 use App\Jobs\SendOtpEmailJob;
+use Laravel\Socialite\Facades\Socialite;
 
 class AuthController extends Controller
 {
@@ -180,6 +181,35 @@ class AuthController extends Controller
     }
 
     // --- 4. FUNGSI STANDAR LAINNYA ---
+
+        // --- 5. GOOGLE OAUTH ---
+        public function redirectToGoogle()
+        {
+            return Socialite::driver('google')->redirect();
+        }
+
+        public function handleGoogleCallback()
+        {
+            try {
+                $googleUser = Socialite::driver('google')->stateless()->user();
+            } catch (\Exception $e) {
+                return redirect()->route('auth.login')->withErrors(['email' => 'Gagal login dengan Google.']);
+            }
+
+            $user = User::where('email', $googleUser->getEmail())->first();
+
+            if (!$user) {
+                $user = User::create([
+                    'name' => $googleUser->getName() ?? $googleUser->getNickname() ?? 'Google User',
+                    'email' => $googleUser->getEmail(),
+                    'password' => Hash::make(uniqid()),
+                    'email_verified_at' => now(),
+                ]);
+            }
+
+            Auth::login($user, true);
+            return redirect()->route('home');
+        }
 
     public function showLogin() {
         if (Auth::check()) return redirect()->route('home');

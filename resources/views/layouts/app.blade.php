@@ -1,6 +1,19 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="scroll-smooth" data-theme="dark">
 <head>
+    <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-17871050022"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  // Koneksi ke Google Ads
+  gtag('config', 'AW-17871050022');
+  
+  // Koneksi ke Google Analytics (Tambahkan baris ini)
+  gtag('config', 'G-XZXQRD5VL0');
+</script>
     @php
         $pageTitle = trim($__env->yieldContent('title'));
         $fullTitle = $pageTitle ? $pageTitle . ' - nipnime' : 'nipnime';

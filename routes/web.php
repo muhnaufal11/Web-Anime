@@ -16,6 +16,7 @@ use App\Http\Controllers\AnimeRequestController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\LanguageController;
+use App\Http\Controllers\Admin\ContactMessageController;
 
 /*
 |--------------------------------------------------------------------------
@@ -45,6 +46,9 @@ Route::get('/schedule', [ScheduleController::class, 'index'])->name('schedule');
 Route::get('/anime/{anime:slug}', [DetailController::class, 'show'])->name('detail');
 Route::get('/watch/{episode:slug}', [WatchController::class, 'show'])->name('watch')->middleware('adult.content');
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
+
+// Public: view contact message status by token
+Route::get('/contact/{token}', [PageController::class, 'viewContactStatus'])->name('contact.status');
 
 // Legal Pages
 Route::get('/dmca', [PageController::class, 'dmca'])->name('dmca');
@@ -78,6 +82,10 @@ Route::prefix('auth')->name('auth.')->group(function () {
     // Halaman Tamu (Login/Register)
     Route::get('login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('login', [AuthController::class, 'login']);
+
+    // Google OAuth
+    Route::get('google', [AuthController::class, 'redirectToGoogle'])->name('google');
+    Route::get('google/callback', [AuthController::class, 'handleGoogleCallback'])->name('google.callback');
     Route::get('register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('register', [AuthController::class, 'register']);
     
@@ -111,4 +119,15 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
     Route::get('/request', [AnimeRequestController::class, 'index'])->name('request.index');
     Route::post('/request', [AnimeRequestController::class, 'store'])->name('request.store');
     Route::post('/request/{animeRequest}/vote', [AnimeRequestController::class, 'vote'])->name('request.vote');
+});
+
+// Admin Routes
+Route::prefix('admin')->middleware(['auth', 'is_admin'])->name('admin.')->group(function () {
+    // Contact Messages
+    Route::get('contact-messages', [ContactMessageController::class, 'index'])->name('contact-messages.index');
+    Route::get('contact-messages/{id}', [ContactMessageController::class, 'show'])->name('contact-messages.show');
+    Route::post('contact-messages/{id}/reply', [ContactMessageController::class, 'reply'])->name('contact-messages.reply');
+    Route::post('contact-messages/{id}/close', [ContactMessageController::class, 'close'])->name('contact-messages.close');
+
+    // (Removed temporary compatibility alias; Filament resource now uses its own slug)
 });
