@@ -24,7 +24,7 @@
             </div>
             <div>
                 <h2 class="text-lg font-bold text-gray-900 dark:text-white">Anime Belum Punya Video Server</h2>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Total: {{ count($animes ?? []) }} anime perlu ditambahkan video</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Total: {{ number_format($totalAnimes ?? 0) }} anime perlu ditambahkan video</p>
             </div>
         </div>
 
@@ -36,6 +36,18 @@
                         <span class="flex items-center justify-center w-8 h-8 font-bold text-gray-500 bg-gray-100 rounded-full dark:bg-gray-700 dark:text-gray-400 text-xs">
                             {{ $index + 1 }}
                         </span>
+                        <div class="relative w-12 h-16 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-700">
+                            @if($anime->poster_image)
+                                <img 
+                                    src="{{ asset('storage/' . $anime->poster_image) }}" 
+                                    alt="Poster {{ $anime->title }}" 
+                                    class="object-cover w-full h-full"
+                                    loading="lazy"
+                                >
+                            @else
+                                <div class="flex items-center justify-center w-full h-full text-xs text-gray-400">No Poster</div>
+                            @endif
+                        </div>
                         <div>
                             <h3 class="text-sm font-bold text-gray-900 dark:text-white">{{ $anime->title }}</h3>
                             <p class="text-xs space-x-2">
@@ -87,6 +99,12 @@
                 </div>
             @endforelse
         </div>
+
+        @if($animes instanceof \Illuminate\Pagination\LengthAwarePaginator)
+            <div class="pt-4">
+                {{ $animes->onEachSide(1)->links() }}
+            </div>
+        @endif
     </div>
 
     {{-- Script Copy --}}

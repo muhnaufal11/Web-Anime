@@ -149,7 +149,13 @@
                             <div class="animate-ping absolute h-3 w-3 rounded-full bg-orange-400 opacity-75"></div>
                             <div class="relative h-3 w-3 rounded-full bg-orange-500"></div>
                         </div>
-                        <span class="text-sm font-bold text-orange-700 dark:text-orange-300">SCRAPING IN PROGRESS</span>
+                        <span class="text-sm font-bold text-orange-700 dark:text-orange-300">
+                            @if($scrapeType === 'batch')
+                                BATCH SCRAPING: {{ $batchCurrent }}/{{ $batchTotal }}
+                            @else
+                                SCRAPING IN PROGRESS
+                            @endif
+                        </span>
                     @else
                         @if($scrapeStatus === 'done')
                             <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -233,6 +239,58 @@
                         @endforeach
                     </div>
                 @endif
+            </div>
+        </div>
+        @endif
+
+        {{-- Batch Results --}}
+        @if(!empty($batchResults))
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold">📊 Batch Results</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {{ count(array_filter($batchResults, fn($r) => $r['success'])) }}/{{ count($batchResults) }} successful
+                </p>
+            </div>
+            <div class="p-6">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-gray-100 dark:bg-gray-700">
+                            <tr>
+                                <th class="px-4 py-2 text-left">Anime</th>
+                                <th class="px-4 py-2 text-left">Status</th>
+                                <th class="px-4 py-2 text-center">Episodes</th>
+                                <th class="px-4 py-2 text-center">Servers</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                            @foreach($batchResults as $result)
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <td class="px-4 py-2">
+                                    <div>
+                                        <p class="font-medium">{{ $result['title'] ?? 'Unknown' }}</p>
+                                        <p class="text-xs text-gray-500">{{ Str::limit($result['url'], 50) }}</p>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-2">
+                                    @if($result['success'])
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                            ✅ Success
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                                            ❌ Failed
+                                        </span>
+                                        <p class="text-xs text-red-600 dark:text-red-400 mt-1">{{ $result['error'] ?? 'Unknown error' }}</p>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-2 text-center font-medium">{{ $result['episodes'] }}</td>
+                                <td class="px-4 py-2 text-center font-medium">{{ $result['servers'] }}</td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
         @endif

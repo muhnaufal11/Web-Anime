@@ -36,6 +36,7 @@ class AnimeSailScrape extends Page implements HasForms
     // Form fields
     public string $scrapeType = 'anime';
     public string $animeUrl = '';
+    public string $batchUrls = '';
     public ?int $localAnimeId = null;
     public int $limit = 0;
     public int $delay = 500;
@@ -51,6 +52,9 @@ class AnimeSailScrape extends Page implements HasForms
     public int $scrapeProgress = 0;
     public string $scrapeStatus = 'idle';
     public bool $isScraping = false;
+    public array $batchResults = [];
+    public int $batchCurrent = 0;
+    public int $batchTotal = 0;
     
     // Episode list for anime selection
     public array $episodeList = [];
@@ -64,6 +68,7 @@ class AnimeSailScrape extends Page implements HasForms
                 ->options([
                     'anime' => '📺 Single Anime (All Episodes)',
                     'episode' => '🎬 Single Episode',
+                    'batch' => '📚 Batch Scrape (Multiple Animes)',
                 ])
                 ->required()
                 ->reactive()
@@ -71,10 +76,21 @@ class AnimeSailScrape extends Page implements HasForms
             
             TextInput::make('animeUrl')
                 ->label('AnimeSail URL')
-                ->required()
+                ->required(fn ($get) => $get('scrapeType') !== 'batch')
                 ->url()
                 ->placeholder('https://154.26.137.28/anime/one-piece/')
+                ->visible(fn ($get) => $get('scrapeType') !== 'batch')
                 ->helperText('Paste the anime or episode URL from AnimeSail'),
+            
+            \Filament\Forms\Components\Textarea::make('batchUrls')
+                ->label('Batch URLs (one per line)')
+                ->required(fn ($get) => $get('scrapeType') === 'batch')
+                ->visible(fn ($get) => $get('scrapeType') === 'batch')
+                ->rows(10)
+                ->placeholder('https://154.26.137.28/anime/anime1/
+https://154.26.137.28/anime/anime2/
+https://154.26.137.28/anime/anime3/')
+                ->helperText('Paste multiple anime URLs, one per line'),
             
             Select::make('localAnimeId')
                 ->label('Match to Local Anime (Optional)')
@@ -267,6 +283,11 @@ class AnimeSailScrape extends Page implements HasForms
 
     public function scrapeNow()
     {
+        if ($this->scrapeType === 'batch') {
+            $this->scrapeBatch();
+            return;
+        }
+
         // Synchronous scrape for smaller jobs
         $this->validate([
             'animeUrl' => 'required|url',
@@ -571,6 +592,153 @@ class AnimeSailScrape extends Page implements HasForms
     protected function cacheKey(): string
     {
         return 'animesail_scrape:' . Auth::id();
+    }
+
+    public function scrapeBatch(): void
+    {
+        $this->validate([
+            'batchUrls' => 'required',
+        ]);
+
+        $urls = array_filter(
+            array_map('trim', explode("\n", $this->batchUrls)),
+            fn ($url) => !empty($url) && filter_var($url, FILTER_VALIDATE_URL)
+        );
+
+        if (empty($urls)) {
+            Notification::make()
+                ->title('Invalid URLs')
+                ->danger()
+                ->body('Please enter valid URLs, one per line')
+                ->send();
+            return;
+        }
+
+        $this->isScraping = true;
+        $this->scrapeLogs = [];
+        $this->batchResults = [];
+        $this->scrapeProgress = 0;
+        $this->scrapeStatus = 'running';
+        $this->batchTotal = count($urls);
+        $this->batchCurrent = 0;
+
+        $this->addLog('🚀 Starting batch scrape for ' . count($urls) . ' animes...');
+        $scraper = new AnimeSailScraper();
+
+        try {
+            foreach ($urls as $index => $url) {
+                $this->batchCurrent = $index + 1;
+                $this->scrapeProgress = (int)(($index / count($urls)) * 100);
+
+                $this->addLog("\n🎬 [{$this->batchCurrent}/{$this->batchTotal}] Fetching: {$url}");
+
+                try {
+                    $episodeResult = $scraper->fetchEpisodeList($url);
+                    
+                    if (!$episodeResult['success']) {
+                        $this->addLog("❌ Error: " . ($episodeResult['error'] ?? 'Unknown'));
+                        $this->batchResults[] = [
+                            'url' => $url,
+                            'success' => false,
+                            'error' => $episodeResult['error'] ?? 'Unknown error',
+                            'episodes' => 0,
+                            'servers' => 0,
+                        ];
+                        continue;
+                    }
+
+                    $episodes = $episodeResult['episodes'];
+                    $animeInfo = $episodeResult['anime_info'];
+                    $totalServers = 0;
+
+                    $this->addLog("✅ Found " . count($episodes) . " episodes - " . ($animeInfo['title'] ?? 'Unknown'));
+
+                    // Apply limit per anime
+                    if ($this->limit > 0 && $this->limit < count($episodes)) {
+                        $episodes = array_slice($episodes, 0, $this->limit);
+                        $this->addLog("⚠️ Limited to {$this->limit} episodes");
+                    }
+
+                    foreach ($episodes as $ep_index => $episode) {
+                        $episodeNumber = $episode['episode_number'] ?? ($ep_index + 1);
+
+                        $serverResult = $scraper->fetchEpisodeServers($episode['url']);
+
+                        if ($serverResult['success']) {
+                            $validServers = 0;
+
+                            foreach ($serverResult['servers'] as $server) {
+                                $embedUrl = $server['url'] ?? null;
+
+                                if ($this->fetchServers && empty($embedUrl) && !empty($server['post_id'])) {
+                                    $embedUrl = $scraper->fetchServerEmbed(
+                                        $server['post_id'],
+                                        $server['type'],
+                                        $server['nume'],
+                                        $server['nonce'] ?? '',
+                                        $episode['url']
+                                    );
+                                    usleep(($this->delay / 2) * 1000);
+                                }
+
+                                if (!empty($embedUrl) && !$this->isInternalServer($embedUrl)) {
+                                    $validServers++;
+                                    $totalServers++;
+                                }
+                            }
+
+                            if ($validServers > 0) {
+                                $this->addLog("  ✅ Episode {$episodeNumber}: {$validServers} servers");
+                            }
+                        }
+
+                        usleep($this->delay * 1000);
+                    }
+
+                    $this->batchResults[] = [
+                        'url' => $url,
+                        'success' => true,
+                        'title' => $animeInfo['title'] ?? 'Unknown',
+                        'episodes' => count($episodes),
+                        'servers' => $totalServers,
+                    ];
+
+                    $this->addLog("✅ Complete: {$totalServers} servers from " . count($episodes) . " episodes");
+
+                } catch (\Exception $e) {
+                    $this->addLog("❌ Exception: " . $e->getMessage());
+                    $this->batchResults[] = [
+                        'url' => $url,
+                        'success' => false,
+                        'error' => $e->getMessage(),
+                        'episodes' => 0,
+                        'servers' => 0,
+                    ];
+                }
+            }
+
+            $this->scrapeProgress = 100;
+            $this->scrapeStatus = 'done';
+            $this->addLog("\n✅ Batch scrape complete!");
+
+            Notification::make()
+                ->title('Batch Scrape Complete!')
+                ->success()
+                ->body("Processed " . count($this->batchResults) . " animes")
+                ->send();
+
+        } catch (\Exception $e) {
+            $this->addLog("❌ Fatal Error: " . $e->getMessage());
+            $this->scrapeStatus = 'error';
+
+            Notification::make()
+                ->title('Batch Scrape Failed')
+                ->danger()
+                ->body($e->getMessage())
+                ->send();
+        }
+
+        $this->isScraping = false;
     }
     
     public function downloadResults()
