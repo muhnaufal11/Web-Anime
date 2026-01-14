@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class Episode extends Model
 {
@@ -69,6 +70,21 @@ class Episode extends Model
             }
         });
         
+        // Invalidate cache and trigger realtime update when episode is created or updated
+        static::created(function (Episode $episode) {
+            Cache::forget('latest_episodes_hash');
+            Cache::forget('home_latest_episodes');
+            // Trigger SSE update for realtime
+            \App\Http\Controllers\EpisodeStreamController::triggerUpdate();
+        });
+        
+        static::updated(function (Episode $episode) {
+            Cache::forget('latest_episodes_hash');
+            Cache::forget('home_latest_episodes');
+            // Trigger SSE update for realtime
+            \App\Http\Controllers\EpisodeStreamController::triggerUpdate();
+        });
+        
         // Discord notification moved to VideoServer::created
         // So notification only fires when video server is actually added
         
@@ -78,6 +94,7 @@ class Episode extends Model
         });
         
         static::deleting(function (Episode $episode) {
+            Cache::forget('latest_episodes_hash');
             $episode->videoServers()->delete();
         });
     }

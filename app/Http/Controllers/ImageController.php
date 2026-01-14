@@ -37,15 +37,20 @@ class ImageController extends Controller
             return $this->placeholder();
         }
         
+        // Check if browser supports WebP
+        $acceptHeader = $request->header('Accept', '');
+        $supportsWebp = str_contains($acceptHeader, 'image/webp');
+        $format = $supportsWebp ? 'webp' : 'jpeg';
+        
         // Cache key for this thumbnail
-        $cacheKey = "thumb_{$size}_" . md5($path);
+        $cacheKey = "thumb_{$size}_{$format}_" . md5($path);
         
         // Check if thumbnail exists in cache
         $thumbnailData = Cache::get($cacheKey);
         
         if (!$thumbnailData) {
             // Generate thumbnail
-            $thumbnailData = $this->generateThumbnail($filePath, $width, $height);
+            $thumbnailData = $this->generateThumbnail($filePath, $width, $height, $format);
             
             if ($thumbnailData) {
                 // Cache for 7 days
@@ -53,13 +58,17 @@ class ImageController extends Controller
             } else {
                 // Fallback to original
                 $thumbnailData = file_get_contents($filePath);
+                $format = 'jpeg';
             }
         }
         
+        $contentType = $format === 'webp' ? 'image/webp' : 'image/jpeg';
+        
         return response($thumbnailData)
-            ->header('Content-Type', 'image/jpeg')
+            ->header('Content-Type', $contentType)
             ->header('Cache-Control', 'public, max-age=31536000, immutable')
-            ->header('Expires', gmdate('D, d M Y H:i:s', time() + 31536000) . ' GMT');
+            ->header('Expires', gmdate('D, d M Y H:i:s', time() + 31536000) . ' GMT')
+            ->header('Vary', 'Accept');
     }
     
     private function placeholder()
@@ -70,7 +79,7 @@ class ImageController extends Controller
     /**
      * Generate thumbnail from original image
      */
-    private function generateThumbnail($filePath, $width, $height)
+    private function generateThumbnail($filePath, $width, $height, $format = 'jpeg')
     {
         if (!extension_loaded('gd')) {
             return null;
@@ -114,9 +123,13 @@ class ImageController extends Controller
             $width, $height, $cropWidth, $cropHeight
         );
         
-        // Output to string
+        // Output to string based on format
         ob_start();
-        imagejpeg($thumb, null, 85);
+        if ($format === 'webp' && function_exists('imagewebp')) {
+            imagewebp($thumb, null, 80);
+        } else {
+            imagejpeg($thumb, null, 85);
+        }
         $data = ob_get_clean();
         
         imagedestroy($source);

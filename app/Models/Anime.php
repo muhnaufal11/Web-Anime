@@ -162,7 +162,11 @@ class Anime extends Model
             return asset('images/placeholder.png');
         }
         
-        return url("/img/{$size}/{$this->poster_image}");
+        // Temporary: use direct storage URL for debugging
+        return asset('storage/' . $this->poster_image);
+        
+        // TODO: Re-enable thumbnail controller after fixing
+        // return url("/img/{$size}/{$this->poster_image}");
     }
 
     /**

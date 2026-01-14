@@ -17,6 +17,7 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\LanguageController;
 use App\Http\Controllers\Admin\ContactMessageController;
+use App\Http\Controllers\EpisodeStreamController;
 
 /*
 |--------------------------------------------------------------------------
@@ -31,6 +32,10 @@ use App\Http\Controllers\Admin\ContactMessageController;
 
 // Language Switch
 Route::get('/language/{locale}', [LanguageController::class, 'switch'])->name('language.switch');
+
+// Real-time Episode Stream (SSE)
+Route::get('/api/episodes/stream', [EpisodeStreamController::class, 'stream'])->name('episodes.stream');
+Route::get('/api/episodes/latest', [EpisodeStreamController::class, 'getLatest'])->name('episodes.latest');
 
 // Filament logout GET handler (redirect to login if accessed via GET)
 Route::get('/filament/logout', function () {

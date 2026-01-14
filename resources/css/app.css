@@ -61,6 +61,17 @@
         transition: background-color 200ms ease, color 200ms ease;
     }
 
+    /* Optimize rendering for below-fold content */
+    .content-visibility-auto {
+        content-visibility: auto;
+        contain-intrinsic-size: 0 500px;
+    }
+
+    /* Image placeholder while loading */
+    img {
+        background-color: #1a1d24;
+    }
+
     /* Custom Scrollbar */
     ::-webkit-scrollbar {
         @apply w-2;

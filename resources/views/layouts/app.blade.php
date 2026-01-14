@@ -6,6 +6,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com">
     <link rel="dns-prefetch" href="https://www.googletagmanager.com">
+    
+    {{-- Preload LCP image for homepage --}}
+    @stack('preload')
     @php
         $pageTitle = trim($__env->yieldContent('title'));
         $fullTitle = $pageTitle ? $pageTitle . ' - nipnime' : 'nipnime';
@@ -113,8 +116,20 @@
 
     <!-- Additional SEO Headers -->
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    <meta name="keywords" content="anime, streaming, nonton anime, sub indo, anime terbaru">
+    <meta name="theme-color" content="#0f1115">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <link rel="alternate" hreflang="id" href="{{ url()->current() }}">
     <meta property="og:locale" content="id_ID">
+    <meta name="format-detection" content="telephone=no">
+    
+    <!-- Performance & Security -->
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     
     <!-- Ad Styles -->
     <style>
@@ -621,8 +636,8 @@
 
     @if(isset($holidaySettings) && (($holidaySettings['christmas'] ?? false) || ($holidaySettings['new_year'] ?? false)))
         <div id="holiday-container" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40;"></div>
-        @if($holidaySettings['christmas']) <script src="https://unpkg.com/magic-snowflakes/dist/snowflakes.min.js"></script> @endif
-        @if($holidaySettings['new_year']) <script src="https://unpkg.com/fireworks-js@2.x/dist/index.umd.js"></script> @endif
+        @if($holidaySettings['christmas']) <script defer src="https://unpkg.com/magic-snowflakes/dist/snowflakes.min.js"></script> @endif
+        @if($holidaySettings['new_year']) <script defer src="https://unpkg.com/fireworks-js@2.x/dist/index.umd.js"></script> @endif
         <script>
             function startEffect() {
                 const isDisabled = localStorage.getItem('nipnime_effects_disabled') === 'true';

@@ -54,7 +54,7 @@
         </div>
 
         <!-- Episodes Grid -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 mb-12">
+        <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 mb-12" id="episodesGrid">
             @forelse($latestEpisodes as $anime)
                 @php $shouldBlurLatest = $anime->shouldBlurPoster(); @endphp
                 <a href="{{ $shouldBlurLatest ? '#' : route('watch', $anime->episodes->first()) }}" class="group block" @if($shouldBlurLatest) onclick="event.preventDefault(); alert('Konten 18+ - Anda harus login dan berusia minimal 18 tahun untuk mengakses.')" @endif>
@@ -167,4 +167,98 @@
         @endif
     </div>
 </div>
+
+{{-- Realtime Episode Updates (only on first page) --}}
+@if($pagination->currentPage() === 1)
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const episodesGrid = document.getElementById('episodesGrid');
+    let eventSource = null;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+
+    function startRealtimeUpdates() {
+        if (eventSource) return;
+
+        try {
+            eventSource = new EventSource('{{ route("episodes.stream") }}');
+
+            eventSource.onopen = function() {
+                reconnectAttempts = 0;
+            };
+
+            eventSource.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'episodes_updated') {
+                        // Reload page to get fresh data with pagination
+                        showNotification('📺 Episode baru! Memuat ulang...');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    }
+                } catch (error) {
+                    console.error('SSE parse error:', error);
+                }
+            };
+
+            eventSource.onerror = function() {
+                stopRealtimeUpdates();
+                if (reconnectAttempts < maxReconnectAttempts) {
+                    reconnectAttempts++;
+                    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+                    setTimeout(startRealtimeUpdates, delay);
+                }
+            };
+        } catch (e) {
+            console.warn('SSE not supported');
+        }
+    }
+
+    function stopRealtimeUpdates() {
+        if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+        }
+    }
+
+    function showNotification(message) {
+        if (document.querySelector('.realtime-toast')) return;
+        
+        const toast = document.createElement('div');
+        toast.className = 'realtime-toast fixed bottom-4 right-4 px-6 py-3 rounded-lg bg-green-600 text-white font-semibold shadow-lg z-50';
+        toast.style.animation = 'fadeIn 0.3s ease';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // Start realtime updates
+    startRealtimeUpdates();
+
+    // Cleanup
+    window.addEventListener('beforeunload', stopRealtimeUpdates);
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            stopRealtimeUpdates();
+        } else {
+            startRealtimeUpdates();
+        }
+    });
+});
+</script>
+
+<style>
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+@endif
 @endsection
+

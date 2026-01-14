@@ -13,6 +13,10 @@
 @section('canonical', $canonicalUrl)
 @section('og_type', 'video.tv_show')
 @section('og_image', $poster)
+
+@push('preload')
+<link rel="preload" as="image" href="{{ $poster }}" fetchpriority="high">
+@endpush
 @push('structured-data')
 <script type="application/ld+json">
 @php
@@ -94,6 +98,8 @@ if ($firstEpisode) {
         <div class="absolute inset-0 opacity-20">
             <img src="{{ $anime->poster_image ? asset('storage/' . $anime->poster_image) : asset('images/placeholder.png') }}" 
                  alt="{{ $anime->title }}"
+                 fetchpriority="high"
+                 decoding="async"
                  class="w-full h-full object-cover bg-gray-800"
                  style="{{ $shouldBlurDetail ? 'filter: blur(40px);' : '' }}">
             <div class="absolute inset-0 bg-gradient-to-r from-[#0f1115] via-[#0f1115]/50 to-transparent"></div>
@@ -107,6 +113,10 @@ if ($firstEpisode) {
                         <div class="relative overflow-hidden rounded-2xl">
                             <img src="{{ $anime->poster_image ? asset('storage/' . $anime->poster_image) : asset('images/placeholder.png') }}" 
                                  alt="{{ $anime->title }}"
+                                 fetchpriority="high"
+                                 decoding="async"
+                                 width="300"
+                                 height="400"
                                  class="w-48 sm:w-64 md:w-full shadow-2xl shadow-black/50 border-2 border-white/10 hover:border-red-600/50 transition-all bg-gray-800"
                                  style="{{ $shouldBlurDetail ? 'filter: blur(20px); transform: scale(1.1);' : '' }}">
                             @if($shouldBlurDetail)

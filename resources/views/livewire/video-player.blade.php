@@ -372,7 +372,7 @@
                             allowfullscreen
                             allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
                             referrerpolicy="no-referrer"
-                            sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-presentation"
+                            sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-presentation allow-top-navigation allow-top-navigation-by-user-activation"
                             class="w-full h-full">
                         </iframe>
                     </div>
@@ -669,7 +669,7 @@
                     allow="autoplay; fullscreen; picture-in-picture; encrypted-media; clipboard-write" 
                     allowfullscreen
                     referrerpolicy="no-referrer"
-                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-presentation">
+                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-presentation allow-top-navigation allow-top-navigation-by-user-activation">
                 </iframe>
             @else
                 {{-- Handle Error/Invalid URL --}}

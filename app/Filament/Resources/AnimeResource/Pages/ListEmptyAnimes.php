@@ -16,22 +16,72 @@ class ListEmptyAnimes extends Page
     protected static string $resource = AnimeResource::class;
     protected static string $view = 'filament.resources.anime-resource.pages.list-empty-animes';
 
-    // Properti untuk menyimpan pilihan filter tahun
+    // Properti untuk menyimpan pilihan filter
     public $year = '';
+    public $minRating = '';
+    public $sortBy = 'rating'; // Default sort by rating
+    public $showDropped = false; // Hide dropped by default
 
     protected int $perPage = 50;
     protected $paginationTheme = 'tailwind';
-    protected $queryString = ['year'];
+    protected $queryString = ['year', 'minRating', 'sortBy', 'showDropped'];
 
     public function updatedYear(): void
     {
         $this->resetPage();
     }
 
+    public function updatedMinRating(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSortBy(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedShowDropped(): void
+    {
+        $this->resetPage();
+    }
+
+    /**
+     * Set anime status to Dropped
+     */
+    public function setDropped(int $animeId): void
+    {
+        $anime = Anime::find($animeId);
+        if ($anime) {
+            $anime->update(['status' => 'Dropped']);
+            \Filament\Notifications\Notification::make()
+                ->title('Status Updated')
+                ->success()
+                ->body("'{$anime->title}' telah di-set sebagai Dropped")
+                ->send();
+        }
+    }
+
+    /**
+     * Unset anime from Dropped status
+     */
+    public function unsetDropped(int $animeId): void
+    {
+        $anime = Anime::find($animeId);
+        if ($anime) {
+            $anime->update(['status' => 'Ongoing']);
+            \Filament\Notifications\Notification::make()
+                ->title('Status Updated')
+                ->success()
+                ->body("'{$anime->title}' telah diaktifkan kembali")
+                ->send();
+        }
+    }
+
     protected function baseQuery(): Builder
     {
         return Anime::query()
-            ->select(['animes.id', 'animes.title', 'animes.release_year', 'animes.poster_image'])
+            ->select(['animes.id', 'animes.title', 'animes.release_year', 'animes.poster_image', 'animes.rating', 'animes.status'])
             ->withCount([
                 'episodes',
                 'episodes as episodes_no_video' => function ($query) {
@@ -64,7 +114,11 @@ class ListEmptyAnimes extends Page
                         });
                     });
             })
-            ->when($this->year, fn ($query) => $query->where('release_year', $this->year));
+            ->when($this->year, fn ($query) => $query->where('release_year', $this->year))
+            ->when($this->minRating, fn ($query) => $query->where('rating', '>=', (float) $this->minRating))
+            ->when(!$this->showDropped, fn ($query) => $query->where(function ($q) {
+                $q->where('status', '!=', 'Dropped')->orWhereNull('status');
+            }));
     }
 
     /**
@@ -72,9 +126,27 @@ class ListEmptyAnimes extends Page
      */
     protected function getAnimes(): LengthAwarePaginator
     {
-        return $this->baseQuery()
-            ->orderByRaw('CASE WHEN episodes_count = 0 THEN 1 ELSE 0 END')
-            ->orderByDesc('episodes_no_video')
+        $query = $this->baseQuery();
+        
+        // Apply sorting
+        switch ($this->sortBy) {
+            case 'rating':
+                $query->orderByDesc('rating');
+                break;
+            case 'year':
+                $query->orderByDesc('release_year');
+                break;
+            case 'episodes':
+                $query->orderByDesc('episodes_no_video');
+                break;
+            case 'title':
+                $query->orderBy('title');
+                break;
+            default:
+                $query->orderByDesc('rating');
+        }
+        
+        return $query
             ->orderBy('title')
             ->paginate($this->perPage);
     }
@@ -93,12 +165,37 @@ class ListEmptyAnimes extends Page
             ->pluck('release_year');
     }
 
+    // Rating presets untuk filter cepat
+    protected function getRatingPresets(): array
+    {
+        return [
+            '' => 'Semua Rating',
+            '8' => '⭐ 8+ (Excellent)',
+            '7' => '⭐ 7+ (Great)',
+            '6' => '⭐ 6+ (Good)',
+            '5' => '⭐ 5+ (Average)',
+        ];
+    }
+
+    // Sort options
+    protected function getSortOptions(): array
+    {
+        return [
+            'rating' => '⭐ Rating (Tertinggi)',
+            'year' => '📅 Tahun (Terbaru)',
+            'episodes' => '🎬 Episode Tanpa Video',
+            'title' => '🔤 Judul (A-Z)',
+        ];
+    }
+
     protected function getViewData(): array
     {
         return [
             'animes' => $this->getAnimes(),
             'years' => $this->getAvailableYears(),
             'totalAnimes' => $this->getTotalAnimes(),
+            'ratingPresets' => $this->getRatingPresets(),
+            'sortOptions' => $this->getSortOptions(),
         ];
     }
 }

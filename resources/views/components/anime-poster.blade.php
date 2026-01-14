@@ -13,12 +13,16 @@
 @endphp
 
 <div class="relative {{ $class }}">
-    {{-- Poster Image --}}
+    {{-- Poster Image with optimized loading --}}
     <img 
         src="{{ $posterUrl }}" 
         alt="{{ $anime->title }}"
         {{ $attributes->merge(['class' => $shouldBlur ? 'blur-xl' : '']) }}
         loading="lazy"
+        decoding="async"
+        sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 200px"
+        width="200"
+        height="280"
     >
     
     {{-- Adult Content Overlay (if should blur) --}}

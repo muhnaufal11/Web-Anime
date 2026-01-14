@@ -3,8 +3,27 @@
 @section('title', 'nipnime - Streaming Anime Sub Indo')
 
 @if(isset($featuredAnimes) && $featuredAnimes->count() > 0)
-@push('head')
+@push('preload')
 <link rel="preload" as="image" href="{{ $featuredAnimes[0]->poster_image ? asset('storage/' . $featuredAnimes[0]->poster_image) : asset('images/placeholder.png') }}" fetchpriority="high">
+@endpush
+
+@push('structured-data')
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "nipnime",
+  "url": "{{ config('app.url') }}",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": {
+      "@type": "EntryPoint",
+      "urlTemplate": "{{ config('app.url') }}/search?q={search_term_string}"
+    },
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
 @endpush
 @endif
 
@@ -13,13 +32,17 @@
     
     @if($featuredAnimes->count() > 0)
     <div class="relative h-[300px] sm:h-[400px] md:h-[500px] w-full overflow-hidden group">
+        {{-- Skeleton placeholder for LCP --}}
+        <div class="absolute inset-0 bg-gray-800 animate-pulse" id="hero-skeleton"></div>
         <div class="absolute inset-0">
             <img src="{{ $featuredAnimes[0]->poster_image ? asset('storage/' . $featuredAnimes[0]->poster_image) : asset('images/placeholder.png') }}" 
                  alt="{{ $featuredAnimes[0]->title }}"
                  fetchpriority="high"
                  decoding="async"
-                 width="1920"
+                 width="1200"
                  height="500"
+                 sizes="100vw"
+                 onload="document.getElementById('hero-skeleton')?.remove()"
                  class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 bg-gray-800">
             <div class="absolute inset-0 bg-gradient-to-r from-[#0f1115] via-[#0f1115]/70 to-[#0f1115]/30"></div>
             <div class="absolute inset-0 bg-gradient-to-t from-[#0f1115] via-transparent to-transparent"></div>
@@ -255,8 +278,8 @@
                 </div>
             </div>
 
-            <!-- Sidebar -->
-            <aside class="space-y-8">
+            <!-- Sidebar - content-visibility for performance -->
+            <aside class="space-y-8 content-visibility-auto">
                 <!-- Sidebar Top Ad -->
                 <x-ad-slot position="sidebar_top" page="home" />
                 
@@ -325,3 +348,66 @@
     </div>
 </div>
 @endsection
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const REFRESH_INTERVAL = 45000;
+    const STORAGE_KEY = 'nipnime_home_auto_refresh';
+    let refreshInterval = null;
+
+    const savedPreference = localStorage.getItem(STORAGE_KEY);
+    if (savedPreference === 'enabled') {
+        startAutoRefresh();
+    }
+
+    function startAutoRefresh() {
+        if (refreshInterval) clearInterval(refreshInterval);
+        
+        refreshInterval = setInterval(async () => {
+            try {
+                const response = await fetch(window.location.href, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (response.ok) {
+                    const html = await response.text();
+                    const parser = new DOMParser();
+                    const newDoc = parser.parseFromString(html, 'text/html');
+                    
+                    const oldGrid = document.querySelector('div.grid.grid-cols-2');
+                    const newGrid = newDoc.querySelector('div.grid.grid-cols-2');
+                    
+                    if (newGrid && oldGrid && oldGrid.innerHTML !== newGrid.innerHTML) {
+                        oldGrid.innerHTML = newGrid.innerHTML;
+                        showNotification(' Episode baru ditemukan!', 'success');
+                    }
+                }
+            } catch (error) {
+                console.error('Auto-refresh error:', error);
+            }
+        }, REFRESH_INTERVAL);
+    }
+
+    function stopAutoRefresh() {
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+            refreshInterval = null;
+        }
+    }
+
+    function showNotification(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = \ixed bottom-4 right-4 px-6 py-3 rounded-lg text-white font-semibold shadow-lg z-50 \\;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+
+    window.addEventListener('beforeunload', stopAutoRefresh);
+});
+</script>
