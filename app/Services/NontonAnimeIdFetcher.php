@@ -58,6 +58,7 @@ class NontonAnimeIdFetcher
                         'name' => $server['name'],
                         'url' => $embedUrl,
                         'type' => $server['type'],
+                        '_available_servers' => count($pageData['servers']), // Total server yang tersedia di source
                     ];
                 }
                 
@@ -103,16 +104,23 @@ class NontonAnimeIdFetcher
             }
         }
         
-        // Extract nonce from base64 encoded script
+        // Extract nonce from inline script first
         if (preg_match('/var\s+kotakajax\s*=\s*\{[^}]*"nonce"\s*:\s*"([^"]+)"/i', $html, $m)) {
             $data['nonce'] = $m[1];
         }
         
-        // Try from base64 script
+        // Try from ALL base64 scripts (search for kotakajax with nonce)
         if (empty($data['nonce'])) {
-            if (preg_match('/src="data:text\/javascript;base64,([^"]+)"[^>]*id="ajax_video-js-extra"/', $html, $b64Match)) {
-                $decoded = base64_decode($b64Match[1]);
-                if (preg_match('/"nonce"\s*:\s*"([^"]+)"/', $decoded, $nonceMatch)) {
+            preg_match_all('/src="data:text\/javascript;base64,([^"]+)"/i', $html, $b64Matches);
+            foreach ($b64Matches[1] as $b64) {
+                $decoded = base64_decode($b64);
+                // Look for kotakajax with nonce
+                if (preg_match('/kotakajax\s*=\s*\{[^}]*"nonce"\s*:\s*"([^"]+)"/', $decoded, $nonceMatch)) {
+                    $data['nonce'] = $nonceMatch[1];
+                    break;
+                }
+                // Also try generic nonce pattern
+                if (empty($data['nonce']) && preg_match('/"nonce"\s*:\s*"([a-f0-9]+)"/', $decoded, $nonceMatch)) {
                     $data['nonce'] = $nonceMatch[1];
                 }
             }
@@ -148,9 +156,21 @@ class NontonAnimeIdFetcher
     /**
      * Fetch embed URL for a specific server via AJAX
      */
-    protected function fetchServerEmbed(string $postId, string $serverType, int $nume, string $nonce, string $referer): ?string
+    protected function fetchServerEmbed(string $postId, string $serverType, int $nume, ?string $nonce, string $referer): ?string
     {
         try {
+            $formData = [
+                'action' => 'doo_player_ajax',
+                'post' => $postId,
+                'nume' => $nume,
+                'type' => $serverType,
+            ];
+            
+            // Add nonce if available
+            if (!empty($nonce)) {
+                $formData['nonce'] = $nonce;
+            }
+            
             $response = Http::asForm()
                 ->timeout(15)
                 ->withHeaders([
@@ -161,12 +181,7 @@ class NontonAnimeIdFetcher
                     'Referer' => $referer,
                     'Origin' => $this->baseUrl,
                 ])
-                ->post($this->ajaxUrl, [
-                    'action' => 'doo_player_ajax',
-                    'post' => $postId,
-                    'nume' => $nume,
-                    'type' => $serverType,
-                ]);
+                ->post($this->ajaxUrl, $formData);
             
             if (!$response->successful()) {
                 Log::warning("AJAX request failed for server {$serverType}: " . $response->status());
@@ -174,6 +189,15 @@ class NontonAnimeIdFetcher
             }
             
             $body = $response->body();
+            
+            // Debug log
+            Log::debug("AJAX response for {$serverType}: status=" . $response->status() . ", body=" . substr($body, 0, 200));
+            
+            // Check for "0" response (WordPress AJAX rejection)
+            if ($body === '0' || $body === '-1') {
+                Log::warning("AJAX rejected for server {$serverType} (response: {$body})");
+                return null;
+            }
             
             // Response is usually JSON with embed_url or iframe HTML
             $json = json_decode($body, true);

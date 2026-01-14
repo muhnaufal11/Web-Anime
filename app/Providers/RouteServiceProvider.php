@@ -35,6 +35,10 @@ class RouteServiceProvider extends ServiceProvider
 
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
+            
+            // Stateless image routes (no session middleware)
+            Route::middleware([])
+                ->group(base_path('routes/image.php'));
         });
     }
 

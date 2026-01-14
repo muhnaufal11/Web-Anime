@@ -2,6 +2,12 @@
 
 @section('title', 'nipnime - Streaming Anime Sub Indo')
 
+@if(isset($featuredAnimes) && $featuredAnimes->count() > 0)
+@push('head')
+<link rel="preload" as="image" href="{{ $featuredAnimes[0]->poster_image ? asset('storage/' . $featuredAnimes[0]->poster_image) : asset('images/placeholder.png') }}" fetchpriority="high">
+@endpush
+@endif
+
 @section('content')
 <div class="bg-gradient-to-b from-[#0f1115] via-[#0f1115] to-[#1a1d24] min-h-screen text-gray-200 font-sans">
     
@@ -10,6 +16,10 @@
         <div class="absolute inset-0">
             <img src="{{ $featuredAnimes[0]->poster_image ? asset('storage/' . $featuredAnimes[0]->poster_image) : asset('images/placeholder.png') }}" 
                  alt="{{ $featuredAnimes[0]->title }}"
+                 fetchpriority="high"
+                 decoding="async"
+                 width="1920"
+                 height="500"
                  class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 bg-gray-800">
             <div class="absolute inset-0 bg-gradient-to-r from-[#0f1115] via-[#0f1115]/70 to-[#0f1115]/30"></div>
             <div class="absolute inset-0 bg-gradient-to-t from-[#0f1115] via-transparent to-transparent"></div>
@@ -92,8 +102,12 @@
                                 <a href="{{ $shouldBlurCW ? '#' : route('watch', $episode) }}" class="group block" @if($shouldBlurCW) onclick="event.preventDefault(); alert('Konten 18+ - Anda harus berusia minimal 18 tahun untuk mengakses.')" @endif>
                                     <div class="relative bg-[#1a1d24] rounded-2xl overflow-hidden border border-white/10 group-hover:border-purple-600/50 transition-all duration-300 shadow-lg">
                                         <div class="relative aspect-[3/4] overflow-hidden">
-                                            <img src="{{ $anime->poster_image ? asset('storage/' . $anime->poster_image) : asset('images/placeholder.png') }}" 
+                                            <img src="{{ $anime->getThumbnailUrl('200x300') }}" 
                                                  alt="{{ $anime->title }}"
+                                                 loading="lazy"
+                                                 decoding="async"
+                                                 width="200"
+                                                 height="300"
                                                  class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 bg-gray-800"
                                                  style="{{ $shouldBlurCW ? 'filter: blur(20px); transform: scale(1.1);' : '' }}">
                                             
@@ -181,8 +195,12 @@
                         <a href="{{ $shouldBlur ? '#' : route('watch', $episode) }}" class="group block" @if($shouldBlur) onclick="event.preventDefault(); alert('Konten 18+ - Anda harus login dan berusia minimal 18 tahun untuk mengakses.')" @endif>
                             <div class="relative bg-[#1a1d24] rounded-2xl overflow-hidden border border-white/10 group-hover:border-red-600/50 transition-all duration-300 shadow-lg">
                                 <div class="relative aspect-[3/4] overflow-hidden">
-                                    <img src="{{ $anime->poster_image ? asset('storage/' . $anime->poster_image) : asset('images/placeholder.png') }}" 
+                                    <img src="{{ $anime->getThumbnailUrl('200x300') }}" 
                                          alt="{{ $anime->title }}"
+                                         loading="lazy"
+                                         decoding="async"
+                                         width="200"
+                                         height="300"
                                          class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 bg-gray-800"
                                          style="{{ $shouldBlur ? 'filter: blur(20px); transform: scale(1.1);' : '' }}">
                                     
@@ -266,8 +284,12 @@
                         @php $shouldBlurTrending = $anime->shouldBlurPoster(); @endphp
                         <a href="{{ $shouldBlurTrending ? '#' : route('detail', $anime) }}" class="flex items-center gap-4 group p-3 rounded-xl hover:bg-white/5 transition-all" @if($shouldBlurTrending) onclick="event.preventDefault(); alert('Konten 18+ - Anda harus login dan berusia minimal 18 tahun untuk mengakses.')" @endif>
                             <div class="relative flex-shrink-0">
-                                <img src="{{ $anime->poster_image ? asset('storage/' . $anime->poster_image) : asset('images/placeholder.png') }}" 
+                                <img src="{{ $anime->getThumbnailUrl('64x96') }}" 
                                      alt="{{ $anime->title }}"
+                                     loading="lazy"
+                                     decoding="async"
+                                     width="64"
+                                     height="96"
                                      class="w-16 h-24 object-cover rounded-lg shadow-lg group-hover:shadow-xl group-hover:shadow-red-600/20 transition-all bg-gray-700"
                                      style="{{ $shouldBlurTrending ? 'filter: blur(15px); transform: scale(1.1);' : '' }}">
                                 @if($shouldBlurTrending)

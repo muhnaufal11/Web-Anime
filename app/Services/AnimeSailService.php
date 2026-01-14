@@ -352,46 +352,83 @@ class AnimeSailService
 
     /**
      * Parse servers dari NontonAnimeID HTML
-     * Dari HTML hanya bisa ambil server pertama (yang ada iframe-nya)
-     * Server lain perlu AJAX fetch via NontonAnimeIdFetcher
+     * ENHANCED: Sekarang bisa fetch SEMUA server via AJAX menggunakan data dari HTML
+     * Jika nonce tidak tersedia di HTML, akan fetch ulang halaman untuk mendapatkan nonce
      */
     protected function parseNontonAnimeIdServers(string $html, Crawler $crawler): array
     {
         $servers = [];
         $serverList = [];
+        $postId = null;
+        $nonce = null;
+        $episodeUrl = null;
         
-        // 1. Extract ALL server names dari player tabs (untuk info)
+        // 0. Try to extract episode URL from canonical link (untuk fetch nonce jika diperlukan)
+        if (preg_match('/<link[^>]*rel=["\']canonical["\'][^>]*href=["\']([^"\']+)["\']/', $html, $canonMatch)) {
+            $episodeUrl = $canonMatch[1];
+        } elseif (preg_match('/<meta[^>]*property=["\']og:url["\'][^>]*content=["\']([^"\']+)["\']/', $html, $ogMatch)) {
+            $episodeUrl = $ogMatch[1];
+        }
+        $postId = null;
+        $nonce = null;
+        
+        // 1. Extract ALL server names dari player tabs
         // <li id="player-option-1" data-post="152760" data-type="Lokal-c" data-nume="1">
         try {
-            $crawler->filter('ul.tabs1.player li[data-type], ul.player li[data-type]')->each(function (Crawler $node) use (&$serverList) {
+            $crawler->filter('ul.tabs1.player li[data-type], ul.player li[data-type], li.serverplayer[data-type]')->each(function (Crawler $node) use (&$serverList, &$postId) {
                 $serverType = $node->attr('data-type');
                 $serverName = trim($node->text());
                 // Clean server name (remove "S-" prefix)
                 $serverName = preg_replace('/^S-/i', '', $serverName);
                 
                 if ($serverType) {
+                    if (empty($postId)) {
+                        $postId = $node->attr('data-post');
+                    }
+                    
                     $serverList[] = [
                         'name' => $serverName ?: $serverType,
                         'type' => $serverType,
                         'post_id' => $node->attr('data-post'),
-                        'nume' => $node->attr('data-nume'),
+                        'nume' => (int) $node->attr('data-nume'),
                     ];
                 }
             });
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+            \Log::warning("Error parsing server tabs: " . $e->getMessage());
+        }
 
-        // 2. Extract main iframe URL (HANYA server pertama yang punya URL di HTML)
+        // 2. Extract nonce from HTML (optional - some sites don't require it)
+        // Try from inline script
+        if (preg_match('/var\s+kotakajax\s*=\s*\{[^}]*"nonce"\s*:\s*"([^"]+)"/i', $html, $m)) {
+            $nonce = $m[1];
+        }
+        
+        // Try from ALL base64 encoded scripts
+        if (empty($nonce)) {
+            preg_match_all('/src="data:text\/javascript;base64,([^"]+)"/i', $html, $b64Matches);
+            foreach ($b64Matches[1] ?? [] as $b64) {
+                $decoded = base64_decode($b64);
+                if (preg_match('/kotakajax\s*=\s*\{[^}]*"nonce"\s*:\s*"([^"]+)"/', $decoded, $nonceMatch)) {
+                    $nonce = $nonceMatch[1];
+                    break;
+                }
+                if (empty($nonce) && preg_match('/"nonce"\s*:\s*"([a-f0-9]+)"/', $decoded, $nonceMatch)) {
+                    $nonce = $nonceMatch[1];
+                }
+            }
+        }
+
+        // 3. Extract first iframe URL (untuk server pertama)
         $firstIframeUrl = null;
         try {
-            // Coba berbagai selector untuk iframe
             $iframeSelectors = [
                 '#videoku iframe',
                 '.player_embed iframe', 
                 '.player-embed iframe',
                 '#pembed iframe',
-                'iframe[data-src*="kotakanimeid"]',
-                'iframe[data-src*="video-embed"]',
-                'iframe[src*="kotakanimeid"]',
+                'iframe[data-src]',
+                'iframe[src*="embed"]',
             ];
             
             foreach ($iframeSelectors as $selector) {
@@ -407,15 +444,35 @@ class AnimeSailService
             }
         } catch (\Exception $e) {}
 
-        // 3. Jika ada iframe URL, assign ke server pertama
+        // 4. Jika punya post_id, server list, dan episodeUrl - gunakan NontonAnimeIdFetcher
+        // yang sudah proven bisa fetch semua server dengan proper session handling
+        if (!empty($postId) && count($serverList) > 0 && !empty($episodeUrl) && str_contains($episodeUrl, 'nontonanimeid')) {
+            \Log::info("NontonAnimeID HTML: Found " . count($serverList) . " servers. Using URL fetcher for: {$episodeUrl}");
+            
+            try {
+                $fetcher = new \App\Services\NontonAnimeIdFetcher();
+                $result = $fetcher->fetchAllServers($episodeUrl);
+                
+                if ($result['success'] && !empty($result['servers'])) {
+                    \Log::info("NontonAnimeID: Successfully fetched " . count($result['servers']) . " servers via URL");
+                    return $result['servers'];
+                }
+            } catch (\Exception $e) {
+                \Log::warning("NontonAnimeID: URL fetch failed, falling back to first iframe: " . $e->getMessage());
+            }
+        }
+        
+        // 5. Fallback: return hanya server pertama dari iframe
+        \Log::info("NontonAnimeID HTML: Falling back to first iframe only. episodeUrl=" . ($episodeUrl ?? 'null'));
+        
         if ($firstIframeUrl && !empty($serverList)) {
             $servers[] = [
                 'name' => $serverList[0]['name'],
                 'url' => $firstIframeUrl,
                 'type' => 'nontonanimeid',
+                '_available_servers' => count($serverList), // Info: total server yang tersedia
             ];
         } elseif ($firstIframeUrl) {
-            // Tidak ada server list tapi ada iframe
             $servers[] = [
                 'name' => 'Default',
                 'url' => $firstIframeUrl,
@@ -423,9 +480,8 @@ class AnimeSailService
             ];
         }
         
-        // 4. Log info untuk debugging
-        if (count($serverList) > 1) {
-            \Log::info("NontonAnimeID: Found " . count($serverList) . " servers but only 1st has embed URL. Use 'Fetch via URL' for all servers.");
+        if (count($serverList) > 1 && count($servers) <= 1) {
+            \Log::warning("NontonAnimeID: Found " . count($serverList) . " server tabs (" . implode(', ', array_column($serverList, 'name')) . ") but only got " . count($servers) . " (iframe). AJAX blocked by anti-bot protection.");
         }
 
         return $servers;

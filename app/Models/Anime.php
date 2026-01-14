@@ -151,4 +151,29 @@ class Anime extends Model
         
         return false;
     }
+
+    /**
+     * Get optimized thumbnail URL for poster
+     * @param string $size Format: widthxheight (e.g., '200x300')
+     */
+    public function getThumbnailUrl(string $size = '200x300'): string
+    {
+        if (!$this->poster_image) {
+            return asset('images/placeholder.png');
+        }
+        
+        return url("/img/{$size}/{$this->poster_image}");
+    }
+
+    /**
+     * Get original poster URL
+     */
+    public function getPosterUrl(): string
+    {
+        if (!$this->poster_image) {
+            return asset('images/placeholder.png');
+        }
+        
+        return asset('storage/' . $this->poster_image);
+    }
 }

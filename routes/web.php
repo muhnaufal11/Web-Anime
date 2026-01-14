@@ -47,8 +47,10 @@ Route::get('/anime/{anime:slug}', [DetailController::class, 'show'])->name('deta
 Route::get('/watch/{episode:slug}', [WatchController::class, 'show'])->name('watch')->middleware('adult.content');
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 
-// Public: view contact message status by token
-Route::get('/contact/{token}', [PageController::class, 'viewContactStatus'])->name('contact.status');
+// Public: view contact message status by token (chat)
+Route::get('/contact/{token}', [PageController::class, 'viewContactStatus'])->name('contact.status')->where('token', '[A-Za-z0-9]+');
+Route::post('/contact/{token}/reply', [PageController::class, 'replyToContact'])->name('contact.reply');
+Route::get('/api/contact/{token}/messages', [PageController::class, 'getMessages'])->name('contact.messages');
 
 // Legal Pages
 Route::get('/about', [PageController::class, 'about'])->name('about');
@@ -58,6 +60,7 @@ Route::get('/privacy', [PageController::class, 'privacy'])->name('privacy');
 Route::get('/terms', [PageController::class, 'terms'])->name('terms');
 Route::get('/contact', [PageController::class, 'contact'])->name('contact');
 Route::post('/contact', [PageController::class, 'sendContact'])->name('contact.send');
+Route::post('/contact/my-tickets', [PageController::class, 'myTickets'])->name('contact.my-tickets');
 
 // Video Proxy Routes
 Route::get('/api/video/proxy/animesail/{playerType}', [VideoProxyController::class, 'proxyAnimeSail'])->name('video.proxy.animesail');
@@ -130,6 +133,10 @@ Route::prefix('admin')->middleware(['auth', 'is_admin'])->name('admin.')->group(
     Route::get('contact-messages/{id}', [ContactMessageController::class, 'show'])->name('contact-messages.show');
     Route::post('contact-messages/{id}/reply', [ContactMessageController::class, 'reply'])->name('contact-messages.reply');
     Route::post('contact-messages/{id}/close', [ContactMessageController::class, 'close'])->name('contact-messages.close');
+});
 
-    // (Removed temporary compatibility alias; Filament resource now uses its own slug)
+// API for real-time chat (using web middleware for Filament compatibility)
+Route::prefix('admin/api')->middleware(['web'])->group(function () {
+    Route::get('contact-messages/{id}/replies', [ContactMessageController::class, 'getReplies']);
+    Route::post('contact-messages/{id}/reply', [ContactMessageController::class, 'quickReply']);
 });

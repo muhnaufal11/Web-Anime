@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\ContactMessage;
+use App\Models\ContactReply;
 
 class PageController extends Controller
 {
@@ -38,9 +40,72 @@ class PageController extends Controller
 
     public function viewContactStatus($token)
     {
-        $message = \App\Models\ContactMessage::where('view_token', $token)->firstOrFail();
+        $message = ContactMessage::with('replies.admin')->where('view_token', $token)->firstOrFail();
 
         return view('pages.contact_status', compact('message'));
+    }
+
+    /**
+     * API: Get messages for real-time chat
+     */
+    public function getMessages($token)
+    {
+        $message = ContactMessage::with(['replies.admin'])
+            ->where('view_token', $token)
+            ->firstOrFail();
+
+        return response()->json([
+            'success' => true,
+            'is_closed' => $message->is_closed,
+            'replies' => $message->replies->map(function ($reply) {
+                return [
+                    'id' => $reply->id,
+                    'message' => $reply->message,
+                    'is_admin' => $reply->is_admin,
+                    'admin' => $reply->admin ? ['name' => $reply->admin->name] : null,
+                    'created_at' => $reply->created_at->toISOString(),
+                ];
+            }),
+        ]);
+    }
+
+    public function replyToContact(Request $request, $token)
+    {
+        $validated = $request->validate([
+            'message' => 'required|string|max:2000',
+        ]);
+
+        $message = ContactMessage::where('view_token', $token)->firstOrFail();
+
+        // Check if chat is closed
+        if ($message->is_closed) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Percakapan sudah ditutup.'
+                ], 400);
+            }
+            return back()->with('error', 'Percakapan sudah ditutup.');
+        }
+
+        // Create new reply from user
+        $reply = ContactReply::create([
+            'contact_message_id' => $message->id,
+            'message' => $validated['message'],
+            'is_admin' => false,
+            'admin_id' => null,
+        ]);
+
+        // Return JSON for AJAX requests
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Pesan berhasil dikirim',
+                'reply' => $reply
+            ]);
+        }
+
+        return back()->with('success', 'Pesan berhasil dikirim!');
     }
 
     public function sendContact(Request $request)
@@ -54,7 +119,7 @@ class PageController extends Controller
 
         $validated['view_token'] = \Illuminate\Support\Str::random(48);
 
-        $message = \App\Models\ContactMessage::create($validated);
+        $message = ContactMessage::create($validated);
 
         // Send a simple confirmation email with a link to check status
         try {
@@ -64,9 +129,23 @@ class PageController extends Controller
             logger()->error('Failed to send contact message confirmation email: ' . $e->getMessage());
         }
 
-        // Return link info so user can save it if needed
-        $link = route('contact.status', $message->view_token);
+        // Redirect langsung ke halaman chat dengan pesan sukses
+        return redirect()->route('contact.status', $message->view_token)
+            ->with('success', 'Pesan berhasil dikirim! Simpan link ini untuk melihat balasan dari admin.');
+    }
 
-        return back()->with('success', 'Pesan berhasil dikirim! Kami akan merespons dalam 1-2 hari kerja. Anda bisa mengecek status pesan Anda di: ' . $link);
+    public function myTickets(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => 'required|email|max:255',
+        ]);
+
+        $email = $validated['email'];
+        $tickets = ContactMessage::with('replies')
+            ->where('email', $email)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('pages.my_tickets', compact('email', 'tickets'));
     }
 }

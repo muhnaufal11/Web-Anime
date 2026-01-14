@@ -1,19 +1,11 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="scroll-smooth" data-theme="dark">
 <head>
-    <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=AW-17871050022"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  // Koneksi ke Google Ads
-  gtag('config', 'AW-17871050022');
-  
-  // Koneksi ke Google Analytics (Tambahkan baris ini)
-  gtag('config', 'G-XZXQRD5VL0');
-</script>
+    <!-- Preload critical assets for LCP -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com">
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com">
     @php
         $pageTitle = trim($__env->yieldContent('title'));
         $fullTitle = $pageTitle ? $pageTitle . ' - nipnime' : 'nipnime';
@@ -56,8 +48,8 @@
     <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
     <link rel="apple-touch-icon" href="{{ asset('images/logo.png') }}">
 
-    <!-- Google AdSense -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3820756796736021"
+    <!-- Google AdSense - defer load -->
+    <script defer src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3820756796736021"
          crossorigin="anonymous"></script>
 
     <script>
@@ -72,14 +64,27 @@
         })();
     </script>
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"></noscript>
     
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
     @stack('head')
     @stack('structured-data')
 
+    <!-- Critical CSS for above-the-fold content -->
     <style>
+        /* Critical layout */
+        body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;background:#0f1115;color:#e5e7eb}
+        .theme-body{background:#0f1115;min-height:100vh}
+        .theme-surface{background:rgba(15,17,21,0.95)}
+        nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(16px)}
+        img{max-width:100%;height:auto;display:block}
+        
+        /* Skeleton loading */
+        .skeleton{background:linear-gradient(90deg,#1a1d24 25%,#252830 50%,#1a1d24 75%);background-size:200% 100%;animation:shimmer 1.5s infinite}
+        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+        
         @keyframes slide-in-right {
             from {
                 transform: translateX(100%);
@@ -105,21 +110,6 @@
             animation: fade-out 0.5s ease-out forwards;
         }
     </style>
-
-    <!-- Google Analytics (Replace YOUR_GA_ID with your actual ID) -->
-    @if(config('app.ga_measurement_id'))
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id={{ config('app.ga_measurement_id') }}"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', '{{ config('app.ga_measurement_id') }}', {
-        'page_path': window.location.pathname,
-        'send_page_view': true
-      });
-    </script>
-    @endif
 
     <!-- Additional SEO Headers -->
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
@@ -149,7 +139,10 @@
                     
                     <a href="{{ route('home') }}" class="group flex items-center gap-2 transition-transform hover:scale-105">
                         <img src="{{ asset('images/logo.png') }}" 
-                             alt="NipNime Logo" 
+                             alt="NipNime Logo"
+                             width="48"
+                             height="48"
+                             fetchpriority="high"
                              class="h-10 sm:h-12 w-auto object-contain drop-shadow-[0_0_15px_rgba(220,38,38,0.6)] transition-all duration-300 group-hover:drop-shadow-[0_0_20px_rgba(220,38,38,0.9)]">
                         
                         </a>
@@ -657,5 +650,57 @@
         ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
     </style>
+
+    <!-- Image Lazy Loading with Intersection Observer -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Native lazy loading fallback for older browsers
+            if ('loading' in HTMLImageElement.prototype) {
+                const images = document.querySelectorAll('img[loading="lazy"]');
+                images.forEach(img => {
+                    if (img.dataset.src) {
+                        img.src = img.dataset.src;
+                    }
+                });
+            } else {
+                // Fallback: Intersection Observer
+                const lazyImages = document.querySelectorAll('img[loading="lazy"]');
+                const imageObserver = new IntersectionObserver((entries, observer) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            if (img.dataset.src) {
+                                img.src = img.dataset.src;
+                            }
+                            img.classList.remove('opacity-0');
+                            img.classList.add('opacity-100');
+                            observer.unobserve(img);
+                        }
+                    });
+                }, { rootMargin: '50px 0px', threshold: 0.01 });
+
+                lazyImages.forEach(img => imageObserver.observe(img));
+            }
+        });
+    </script>
+
+    <!-- Deferred Google Analytics -->
+    <script>
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                var gtag = document.createElement('script');
+                gtag.async = true;
+                gtag.src = 'https://www.googletagmanager.com/gtag/js?id=AW-17871050022';
+                document.head.appendChild(gtag);
+                
+                window.dataLayer = window.dataLayer || [];
+                function gtagFn(){dataLayer.push(arguments);}
+                window.gtag = gtagFn;
+                gtagFn('js', new Date());
+                gtagFn('config', 'AW-17871050022');
+                gtagFn('config', 'G-XZXQRD5VL0');
+            }, 2000);
+        });
+    </script>
 </body>
 </html>

@@ -454,6 +454,114 @@ class EpisodeResource extends Resource
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
                 
+                // BULK SET DEFAULT SERVER
+                Tables\Actions\BulkAction::make('bulk_set_default')
+                    ->label('Bulk Set Default')
+                    ->icon('heroicon-o-star')
+                    ->color('warning')
+                    ->form(function (\Illuminate\Database\Eloquent\Collection $records) {
+                        // Ambil semua nama server unik dari episode yang dipilih
+                        $episodeIds = $records->pluck('id')->toArray();
+                        $serverNames = \App\Models\VideoServer::whereIn('episode_id', $episodeIds)
+                            ->where('is_active', true)
+                            ->pluck('server_name')
+                            ->unique()
+                            ->sort()
+                            ->mapWithKeys(fn ($name) => [$name => $name])
+                            ->toArray();
+                        
+                        return [
+                            Forms\Components\Select::make('method')
+                                ->label('Metode Pemilihan Server Default')
+                                ->options([
+                                    'name' => 'Pilih Nama Server',
+                                    'priority' => 'Berdasarkan Prioritas',
+                                    'first' => 'Server Pertama (Urutan ID)',
+                                ])
+                                ->default('name')
+                                ->required()
+                                ->reactive()
+                                ->helperText('Pilih cara menentukan server default'),
+                            Forms\Components\Select::make('server_name')
+                                ->label('Pilih Server')
+                                ->options($serverNames)
+                                ->searchable()
+                                ->visible(fn (callable $get) => $get('method') === 'name')
+                                ->helperText('Server dengan nama ini akan dijadikan default'),
+                            Forms\Components\TextInput::make('priority_list')
+                                ->label('Prioritas Nama Server (pisah koma)')
+                                ->default('Cepat, Kotakvideo, Server Admin, Lokal, U-hd, Nontonku')
+                                ->placeholder('Cepat, Kotakvideo, Server Admin')
+                                ->visible(fn (callable $get) => $get('method') === 'priority')
+                                ->helperText('Server yang cocok pertama akan dijadikan default'),
+                        ];
+                    })
+                    ->action(function (\Illuminate\Database\Eloquent\Collection $records, array $data) {
+                        $method = $data['method'] ?? 'name';
+                        $updated = 0;
+                        $skipped = 0;
+                        
+                        // Parse priority list
+                        $priorities = [];
+                        if ($method === 'priority' && !empty($data['priority_list'])) {
+                            $priorities = array_map('trim', explode(',', $data['priority_list']));
+                        }
+                        
+                        foreach ($records as $episode) {
+                            $servers = $episode->videoServers()->where('is_active', true)->get();
+                            
+                            if ($servers->isEmpty()) {
+                                $skipped++;
+                                continue;
+                            }
+                            
+                            $selectedServer = null;
+                            
+                            if ($method === 'first') {
+                                // Pilih server pertama
+                                $selectedServer = $servers->first();
+                            } elseif ($method === 'name' && !empty($data['server_name'])) {
+                                // Pilih berdasarkan nama exact match
+                                $selectedServer = $servers->first(function ($s) use ($data) {
+                                    return $s->server_name === $data['server_name'];
+                                });
+                            } elseif ($method === 'priority' && !empty($priorities)) {
+                                // Pilih berdasarkan prioritas (partial match)
+                                foreach ($priorities as $priority) {
+                                    $selectedServer = $servers->first(function ($s) use ($priority) {
+                                        return stripos($s->server_name, $priority) !== false;
+                                    });
+                                    if ($selectedServer) break;
+                                }
+                            }
+                            
+                            // Fallback ke server pertama jika tidak ada yang cocok
+                            if (!$selectedServer) {
+                                $selectedServer = $servers->first();
+                            }
+                            
+                            if ($selectedServer) {
+                                // Reset semua default
+                                $episode->videoServers()->update(['is_default' => false]);
+                                // Set yang dipilih
+                                $selectedServer->update(['is_default' => true]);
+                                $updated++;
+                            } else {
+                                $skipped++;
+                            }
+                        }
+                        
+                        \Filament\Notifications\Notification::make()
+                            ->title('Bulk Set Default Selesai')
+                            ->success()
+                            ->body("Updated: {$updated} episode | Skipped: {$skipped} (tidak ada server)")
+                            ->send();
+                    })
+                    ->deselectRecordsAfterCompletion()
+                    ->requiresConfirmation()
+                    ->modalHeading('Set Default Server Massal')
+                    ->modalSubheading('Pilih server default untuk semua episode yang dipilih'),
+                
                 // BULK UPLOAD LOCAL (HANYA ADMIN UPLOAD & SUPERADMIN)
                 Tables\Actions\BulkAction::make('bulk_upload_local')
                     ->label('Bulk Upload Video Lokal')
@@ -590,12 +698,12 @@ class EpisodeResource extends Resource
                             ->label('URL Episodes (1 per baris)')
                             ->rows(4)
                             ->placeholder("https://nontonanimeid.boats/anime-episode-1/\nhttps://nontonanimeid.boats/anime-episode-2/")
-                            ->helperText('Masukkan URL episode NontonAnimeID untuk fetch semua server via AJAX. Nomor episode dari URL akan di-match dengan episode yang dipilih.'),
+                            ->helperText('⚠️ NontonAnimeID hanya sync 1 server (Cepat) karena proteksi anti-bot. Untuk server lain, gunakan sumber alternatif.'),
                         Forms\Components\Textarea::make('html_content')
                             ->label('HTML Content (untuk semua episode)')
                             ->rows(4)
                             ->placeholder('Atau paste HTML halaman episode...')
-                            ->helperText('Opsional: Paste HTML yang sama untuk semua episode (hanya server pertama yang bisa diambil)'),
+                            ->helperText('⚠️ Hanya server pertama (dari iframe) yang bisa diambil dari HTML.'),
                         Forms\Components\FileUpload::make('html_files')
                             ->label('Upload HTML Files (per episode)')
                             ->multiple()
@@ -792,9 +900,16 @@ class EpisodeResource extends Resource
                             $message .= " | Skipped: {$skippedEpisodes}";
                         }
                         
+                        // Show warning if only 1 server synced from NontonAnimeID
+                        $notificationType = 'success';
+                        if ($totalCreated + $totalUpdated <= $processedEpisodes && $processedEpisodes > 0) {
+                            $message .= "\n⚠️ NontonAnimeID: Hanya 1 server per episode (anti-bot protection)";
+                            $notificationType = 'warning';
+                        }
+                        
                         \Filament\Notifications\Notification::make()
                             ->title('Bulk Sync Completed')
-                            ->success()
+                            ->{$notificationType}()
                             ->body($message)
                             ->send();
                     })

@@ -183,6 +183,22 @@
                     ⏱️ Waktu respons rata-rata: <span class="text-white font-bold">1-2 hari kerja</span>
                 </p>
             </div>
+
+            {{-- Cek Tiket Saya --}}
+            <div class="bg-gradient-to-br from-blue-600/20 to-cyan-600/20 rounded-2xl p-6 border border-blue-500/20">
+                <h2 class="text-xl font-bold text-white mb-2">🎫 Tiket Saya</h2>
+                <p class="text-gray-400 mb-4 text-sm">Cek status tiket yang sudah Anda buat</p>
+                <form action="{{ route('contact.my-tickets') }}" method="POST" class="space-y-3">
+                    @csrf
+                    <input type="email" name="email" value="{{ old('email', auth()->user()->email ?? '') }}" required
+                        class="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm"
+                        placeholder="Masukkan email Anda">
+                    <button type="submit" 
+                        class="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-bold rounded-xl transition-all text-sm">
+                        Lihat Tiket Saya
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 </div>

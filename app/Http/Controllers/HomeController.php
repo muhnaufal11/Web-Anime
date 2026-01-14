@@ -7,6 +7,7 @@ use App\Models\Episode;
 use App\Models\Genre;
 use App\Models\WatchHistory;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
 
 class HomeController extends Controller
 {
@@ -31,70 +32,80 @@ class HomeController extends Controller
                 ->get();
         }
 
-        $featuredAnimes = Anime::where('featured', true)
-            ->with('genres', 'episodes')
-            ->limit(5)
-            ->get();
-
-        // Latest episodes: show ONLY the latest episode per anime (no duplicates)
-        // Get the latest episode number per anime with their latest video server update time
-        $latestEpisodesData = \DB::table('episodes')
-            ->join('animes', 'episodes.anime_id', '=', 'animes.id')
-            ->join('video_servers', 'episodes.id', '=', 'video_servers.episode_id')
-            ->where('video_servers.is_active', true)
-            ->select(
-                'episodes.id as episode_id',
-                'animes.id as anime_id',
-                'episodes.episode_number',
-                \DB::raw('MAX(video_servers.updated_at) as latest_server_update'),
-                \DB::raw('ROW_NUMBER() OVER (PARTITION BY animes.id ORDER BY episodes.episode_number DESC, MAX(video_servers.updated_at) DESC) as rn')
-            )
-            ->groupBy('episodes.id', 'animes.id', 'episodes.episode_number')
-            ->orderBy('latest_server_update', 'desc')
-            ->get();
-
-        // Filter to get only the latest episode per anime
-        $latestPerAnime = [];
-        foreach ($latestEpisodesData as $row) {
-            // Keep only the first (latest) episode for each anime
-            if (!isset($latestPerAnime[$row->anime_id])) {
-                $latestPerAnime[$row->anime_id] = $row;
-            }
-        }
-
-        // Sort by latest_server_update and limit
-        $latestPerAnime = collect($latestPerAnime)
-            ->sortBy('latest_server_update', SORT_REGULAR, true)
-            ->take(12)
-            ->values()
-            ->all();
-
-        // Get episode IDs in order
-        $episodeIds = array_map(fn($row) => $row->episode_id, $latestPerAnime);
-        $episodeOrder = array_flip($episodeIds);
-
-        // Load episodes with their anime
-        $episodes = Episode::whereIn('id', $episodeIds)
-            ->with(['anime.genres', 'videoServers' => fn($q) => $q->where('is_active', true)])
-            ->get()
-            ->sort(function($a, $b) use ($episodeOrder) {
-                return ($episodeOrder[$a->id] ?? 999) <=> ($episodeOrder[$b->id] ?? 999);
-            })
-            ->values();
-
-        // Create anime objects for each episode (for display purposes)
-        $latestEpisodes = $episodes->map(function($episode) {
-            $anime = clone $episode->anime;
-            $anime->setRelation('episodes', collect([$episode]));
-            return $anime;
+        // Cache featured animes for 5 minutes
+        $featuredAnimes = Cache::remember('home_featured', 300, function () {
+            return Anime::where('featured', true)
+                ->with('genres', 'episodes')
+                ->limit(5)
+                ->get();
         });
 
-        $popularAnimes = Anime::with('genres')
-            ->orderBy('rating', 'desc')
-            ->limit(10)
-            ->get();
+        // Cache latest episodes for 2 minutes (updates frequently)
+        $latestEpisodes = Cache::remember('home_latest_episodes', 120, function () {
+            // Latest episodes: show ONLY the latest episode per anime (no duplicates)
+            $latestEpisodesData = \DB::table('episodes')
+                ->join('animes', 'episodes.anime_id', '=', 'animes.id')
+                ->join('video_servers', 'episodes.id', '=', 'video_servers.episode_id')
+                ->where('video_servers.is_active', true)
+                ->select(
+                    'episodes.id as episode_id',
+                    'animes.id as anime_id',
+                    'episodes.episode_number',
+                    \DB::raw('MAX(video_servers.updated_at) as latest_server_update'),
+                    \DB::raw('ROW_NUMBER() OVER (PARTITION BY animes.id ORDER BY episodes.episode_number DESC, MAX(video_servers.updated_at) DESC) as rn')
+                )
+                ->groupBy('episodes.id', 'animes.id', 'episodes.episode_number')
+                ->orderBy('latest_server_update', 'desc')
+                ->get();
 
-        $genres = Genre::all();
+            // Filter to get only the latest episode per anime
+            $latestPerAnime = [];
+            foreach ($latestEpisodesData as $row) {
+                if (!isset($latestPerAnime[$row->anime_id])) {
+                    $latestPerAnime[$row->anime_id] = $row;
+                }
+            }
+
+            // Sort by latest_server_update and limit
+            $latestPerAnime = collect($latestPerAnime)
+                ->sortBy('latest_server_update', SORT_REGULAR, true)
+                ->take(12)
+                ->values()
+                ->all();
+
+            // Get episode IDs in order
+            $episodeIds = array_map(fn($row) => $row->episode_id, $latestPerAnime);
+            $episodeOrder = array_flip($episodeIds);
+
+            // Load episodes with their anime
+            $episodes = Episode::whereIn('id', $episodeIds)
+                ->with(['anime.genres', 'videoServers' => fn($q) => $q->where('is_active', true)])
+                ->get()
+                ->sort(function($a, $b) use ($episodeOrder) {
+                    return ($episodeOrder[$a->id] ?? 999) <=> ($episodeOrder[$b->id] ?? 999);
+                })
+                ->values();
+
+            // Create anime objects for each episode
+            return $episodes->map(function($episode) {
+                $anime = clone $episode->anime;
+                $anime->setRelation('episodes', collect([$episode]));
+                return $anime;
+            });
+        });
+
+        // Cache popular animes for 10 minutes
+        $popularAnimes = Cache::remember('home_popular', 600, function () {
+            return Anime::with('genres')
+                ->orderBy('rating', 'desc')
+                ->limit(10)
+                ->get();
+        });
+
+        // Cache genres for 1 hour
+        $genres = Cache::remember('home_genres', 3600, function () {
+            return Genre::all();
+        });
 
         return view('home', [
             'featuredAnimes' => $featuredAnimes,
