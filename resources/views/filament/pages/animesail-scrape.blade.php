@@ -1,5 +1,5 @@
 <x-filament::page>
-    <div class="space-y-6" @if($isScraping) wire:poll.1s="pollScrape" @endif>
+    <div class="space-y-6" @if($isScraping && $scrapeType === 'batch') wire:poll-500ms="pollBatchProgress" @endif>
         {{-- Header Card --}}
         <div class="bg-gradient-to-r from-orange-500 to-red-600 rounded-lg shadow-lg p-6 text-white">
             <div class="flex items-center gap-4">
@@ -172,13 +172,13 @@
                         @endif
                     @endif
                 </div>
-                <span class="text-sm text-gray-600 dark:text-gray-400">{{ $scrapeProgress }}%</span>
+                <span class="text-sm font-semibold text-orange-600 dark:text-orange-400">{{ $scrapeProgress }}%</span>
             </div>
 
             {{-- Progress Bar --}}
-            @if($isScraping)
+            @if($scrapeStatus === 'running' || $scrapeProgress > 0)
             <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-4">
-                <div class="bg-gradient-to-r from-orange-500 to-red-500 h-2.5 rounded-full transition-all duration-500" style="width: {{ $scrapeProgress }}%"></div>
+                <div class="bg-gradient-to-r from-orange-500 to-red-500 h-2.5 rounded-full transition-all duration-300" style="width: {{ $scrapeProgress }}%"></div>
             </div>
             @endif
 

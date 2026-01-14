@@ -113,7 +113,7 @@ class AnimeSailScrape extends Page implements HasForms
                         ->helperText('Type at least 2 characters to search anime'),
                 ])
                 ->columns(1)
-                ->addActionLabel('➕ Add Anime Entry')
+                ->createItemButtonLabel('➕ Add Anime Entry')
                 ->helperText('Masukkan URL dan pilih anime lokal untuk setiap entry'),
             
             Select::make('localAnimeId')
@@ -545,13 +545,13 @@ class AnimeSailScrape extends Page implements HasForms
         
         $episode = $query->first();
         
-        // Auto create episode if not exists and enabled
-        if (!$episode && $this->autoCreateEpisode && $episodeNumber) {
-            $anime = Anime::find($this->localAnimeId);
+        // Auto create episode if not exists (batch mode always auto-create)
+        if (!$episode && $episodeNumber) {
+            $anime = Anime::find($animeId);
             if ($anime) {
                 $slug = \Illuminate\Support\Str::slug($anime->title . '-episode-' . $episodeNumber);
                 $episode = Episode::create([
-                    'anime_id' => $this->localAnimeId,
+                    'anime_id' => $animeId,
                     'episode_number' => $episodeNumber,
                     'title' => $episodeTitle ?? "Episode {$episodeNumber}",
                     'slug' => $slug,
@@ -670,13 +670,23 @@ class AnimeSailScrape extends Page implements HasForms
         $this->batchTotal = count($urlAnimeMap);
         $this->batchCurrent = 0;
 
-        $this->addLog('🚀 Starting batch scrape for ' . count($urlAnimeMap) . ' animes...');
+        // Initialize cache for real-time updates
+        $cacheKey = $this->cacheBatchKey();
+        Cache::put($cacheKey, [
+            'progress' => 0,
+            'status' => 'running',
+            'current' => 0,
+            'total' => $this->batchTotal,
+            'logs' => [['time' => now()->format('H:i:s'), 'message' => '🚀 Starting batch scrape for ' . count($urlAnimeMap) . ' animes...']],
+            'results' => [],
+        ], now()->addMinutes(60));
+
         $scraper = new AnimeSailScraper();
 
         try {
             foreach ($urlAnimeMap as $index => $item) {
                 $this->batchCurrent = $index + 1;
-                $this->scrapeProgress = (int)(($index / count($urlAnimeMap)) * 100);
+                $this->scrapeProgress = (int)((($index) / count($urlAnimeMap)) * 100);
                 $url = $item['url'];
                 $animeTitle = $item['title'];
                 $animeId = $item['animeId'];
@@ -686,11 +696,15 @@ class AnimeSailScrape extends Page implements HasForms
                     $this->addLog("  📺 Matched Anime: {$animeTitle}");
                 }
 
+                // Update cache with current progress
+                $this->updateBatchCache();
+
                 try {
                     $episodeResult = $scraper->fetchEpisodeList($url);
                     
                     if (!$episodeResult['success']) {
                         $this->addLog("❌ Error: " . ($episodeResult['error'] ?? 'Unknown'));
+                        $this->updateBatchCache();
                         $this->batchResults[] = [
                             'url' => $url,
                             'title' => $animeTitle,
@@ -707,11 +721,13 @@ class AnimeSailScrape extends Page implements HasForms
                     $totalServers = 0;
 
                     $this->addLog("✅ Found " . count($episodes) . " episodes");
+                    $this->updateBatchCache();
 
                     // Apply limit per anime
                     if ($this->limit > 0 && $this->limit < count($episodes)) {
                         $episodes = array_slice($episodes, 0, $this->limit);
                         $this->addLog("⚠️ Limited to {$this->limit} episodes");
+                        $this->updateBatchCache();
                     }
 
                     foreach ($episodes as $ep_index => $episode) {
@@ -772,9 +788,11 @@ class AnimeSailScrape extends Page implements HasForms
                     if ($this->syncToDatabase && $animeId) {
                         $this->addLog("  💾 Synced to database!");
                     }
+                    $this->updateBatchCache();
 
                 } catch (\Exception $e) {
                     $this->addLog("❌ Exception: " . $e->getMessage());
+                    $this->updateBatchCache();
                     $this->batchResults[] = [
                         'url' => $url,
                         'title' => $animeTitle,
@@ -789,6 +807,7 @@ class AnimeSailScrape extends Page implements HasForms
             $this->scrapeProgress = 100;
             $this->scrapeStatus = 'done';
             $this->addLog("\n✅ Batch scrape complete!");
+            $this->updateBatchCache();
 
             Notification::make()
                 ->title('Batch Scrape Complete!')
@@ -799,6 +818,7 @@ class AnimeSailScrape extends Page implements HasForms
         } catch (\Exception $e) {
             $this->addLog("❌ Fatal Error: " . $e->getMessage());
             $this->scrapeStatus = 'error';
+            $this->updateBatchCache();
 
             Notification::make()
                 ->title('Batch Scrape Failed')
@@ -808,6 +828,59 @@ class AnimeSailScrape extends Page implements HasForms
         }
 
         $this->isScraping = false;
+    }
+
+    protected function updateBatchCache(): void
+    {
+        $cacheKey = $this->cacheBatchKey();
+        Cache::put($cacheKey, [
+            'progress' => $this->scrapeProgress,
+            'status' => $this->scrapeStatus,
+            'current' => $this->batchCurrent,
+            'total' => $this->batchTotal,
+            'logs' => $this->scrapeLogs,
+            'results' => $this->batchResults,
+        ], now()->addMinutes(60));
+    }
+
+    public function pollBatchProgress(): void
+    {
+        $state = Cache::get($this->cacheBatchKey());
+        if (!$state) {
+            return;
+        }
+
+        $this->scrapeLogs = $state['logs'] ?? [];
+        $this->scrapeProgress = $state['progress'] ?? 0;
+        $this->scrapeStatus = $state['status'] ?? 'idle';
+        $this->batchCurrent = $state['current'] ?? 0;
+        $this->batchTotal = $state['total'] ?? 0;
+        $this->batchResults = $state['results'] ?? [];
+
+        if (in_array($this->scrapeStatus, ['done', 'error'])) {
+            $this->isScraping = false;
+
+            if ($this->scrapeStatus === 'done') {
+                Notification::make()
+                    ->title('Batch Scrape Complete!')
+                    ->success()
+                    ->body('Check the results below')
+                    ->send();
+            }
+
+            if ($this->scrapeStatus === 'error') {
+                Notification::make()
+                    ->title('Batch Scrape Failed')
+                    ->danger()
+                    ->body('Check the logs for details')
+                    ->send();
+            }
+        }
+    }
+
+    protected function cacheBatchKey(): string
+    {
+        return 'animesail_batch_scrape:' . Auth::id();
     }
     
     public function downloadResults()

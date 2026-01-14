@@ -79,6 +79,33 @@
     @stack('head')
     @stack('structured-data')
 
+    <style>
+        @keyframes slide-in-right {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        @keyframes fade-out {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+            }
+        }
+        .animate-slide-in-right {
+            animation: slide-in-right 0.3s ease-out;
+        }
+        .animate-fade-out {
+            animation: fade-out 0.5s ease-out forwards;
+        }
+    </style>
+
     <!-- Google Analytics (Replace YOUR_GA_ID with your actual ID) -->
     @if(config('app.ga_measurement_id'))
     <!-- Google tag (gtag.js) -->
@@ -362,9 +389,11 @@
                 <div>
                     <h4 class="text-white font-black uppercase tracking-wider mb-3 sm:mb-4 text-sm sm:text-base">{{ __('app.footer.legal') }}</h4>
                     <ul class="space-y-1.5 sm:space-y-2 text-gray-400 text-xs sm:text-sm">
+                        <li><a href="{{ route('about') }}" class="hover:text-red-500 transition">Tentang Kami</a></li>
                         <li><a href="{{ route('dmca') }}" class="hover:text-red-500 transition">{{ __('app.footer.dmca') }}</a></li>
                         <li><a href="{{ route('privacy') }}" class="hover:text-red-500 transition">{{ __('app.footer.privacy') }}</a></li>
                         <li><a href="{{ route('terms') }}" class="hover:text-red-500 transition">{{ __('app.footer.terms') }}</a></li>
+                        <li><a href="{{ route('disclaimer') }}" class="hover:text-red-500 transition">Disclaimer</a></li>
                         <li><a href="{{ route('contact') }}" class="hover:text-red-500 transition">{{ __('app.footer.contact') }}</a></li>
                     </ul>
                 </div>

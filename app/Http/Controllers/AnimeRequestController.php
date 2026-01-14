@@ -60,9 +60,19 @@ class AnimeRequestController extends Controller
             // Auto-upvote existing request instead
             if (auth()->check() && !$existing->hasVoted(auth()->user())) {
                 $existing->toggleVote(auth()->user());
-                return back()->with('success', 'Request serupa sudah ada! Vote kamu ditambahkan.');
+                $message = 'Request serupa sudah ada! Vote kamu ditambahkan.';
+                
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json(['success' => true, 'message' => $message]);
+                }
+                return back()->with('success', $message);
             }
-            return back()->with('info', 'Request serupa sudah ada dalam antrian.');
+            $message = 'Request serupa sudah ada dalam antrian.';
+            
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => true, 'message' => $message]);
+            }
+            return back()->with('info', $message);
         }
 
         $animeRequest = AnimeRequest::create([
@@ -82,7 +92,12 @@ class AnimeRequestController extends Controller
             $animeRequest->voters()->attach(auth()->id());
         }
 
-        return back()->with('success', 'Request anime berhasil dikirim! Admin akan meninjau.');
+        $message = 'Request anime berhasil dikirim! Admin akan meninjau.';
+        
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => $message]);
+        }
+        return back()->with('success', $message);
     }
 
     /**

@@ -51,6 +51,8 @@ Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap')
 Route::get('/contact/{token}', [PageController::class, 'viewContactStatus'])->name('contact.status');
 
 // Legal Pages
+Route::get('/about', [PageController::class, 'about'])->name('about');
+Route::get('/disclaimer', [PageController::class, 'disclaimer'])->name('disclaimer');
 Route::get('/dmca', [PageController::class, 'dmca'])->name('dmca');
 Route::get('/privacy', [PageController::class, 'privacy'])->name('privacy');
 Route::get('/terms', [PageController::class, 'terms'])->name('terms');
