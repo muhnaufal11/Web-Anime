@@ -54,10 +54,10 @@
         </div>
 
         <!-- Episodes Grid -->
-        <div class="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 xs:gap-3 sm:gap-4 md:gap-5 lg:gap-6 mb-8 sm:mb-12" id="episodesGrid">
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5 lg:gap-6 mb-8 sm:mb-12" id="episodesGrid">
             @forelse($latestEpisodes as $anime)
                 @php $shouldBlurLatest = $anime->shouldBlurPoster(); @endphp
-                <a href="{{ $shouldBlurLatest ? '#' : route('watch', $anime->episodes->first()) }}" class="group block" @if($shouldBlurLatest) onclick="event.preventDefault(); alert('Konten 18+ - Anda harus login dan berusia minimal 18 tahun untuk mengakses.')" @endif>
+            <a href="{{ $shouldBlurLatest ? '#' : route('watch', $anime->episodes->first()) }}" class="group block" data-episode-id="{{ $anime->episodes->first()->id }}" @if($shouldBlurLatest) onclick="event.preventDefault(); alert('Konten 18+ - Anda harus login dan berusia minimal 18 tahun untuk mengakses.')" @endif>
                     <div class="relative bg-[#1a1d24] rounded-2xl overflow-hidden border border-white/10 group-hover:border-red-600/50 transition-all duration-300 shadow-lg">
                         <div class="relative aspect-[3/4] overflow-hidden">
                             <img src="{{ $anime->poster_image ? asset('storage/' . $anime->poster_image) : asset('images/placeholder.png') }}" 
@@ -128,7 +128,8 @@
         <!-- Pagination -->
         @if($pagination->hasPages())
             <div class="flex justify-center mb-8 sm:mb-10 px-2">
-                <nav class="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold">
+                <div class="w-full max-w-5xl overflow-x-auto pagination-scroll px-1">
+                    <nav class="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold min-w-max">
                     {{-- Previous Page Link --}}
                     @if ($pagination->onFirstPage())
                         <span class="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-[#111318] text-gray-600 cursor-not-allowed text-xs sm:text-sm">
@@ -192,10 +193,31 @@
                         </span>
                     @endif
                 </nav>
+                </div>
             </div>
         @endif
     </div>
 </div>
+
+<style>
+    .pagination-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    }
+
+    .pagination-scroll::-webkit-scrollbar {
+        height: 6px;
+    }
+
+    .pagination-scroll::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+    }
+
+    .pagination-scroll nav {
+        min-width: max-content;
+    }
+</style>
 
 {{-- Realtime Episode Updates (only on first page) --}}
 @if($pagination->currentPage() === 1)

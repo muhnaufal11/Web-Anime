@@ -1,12 +1,7 @@
 @if ($paginator->hasPages())
-    <div class="flex flex-col items-center gap-3 pt-6 select-none">
-        <div class="text-xs text-gray-400 tracking-tight">
-            Showing <span class="text-white font-semibold">{{ $paginator->firstItem() }}</span>
-            to <span class="text-white font-semibold">{{ $paginator->lastItem() }}</span>
-            of <span class="text-white font-semibold">{{ $paginator->total() }}</span> results
-        </div>
-
-        <nav role="navigation" aria-label="Pagination" class="flex items-center gap-1.5 bg-[#0f1115] border border-white/5 rounded-2xl px-2 py-2 shadow-lg shadow-black/40">
+    <div class="flex flex-col items-center gap-3 pt-6 select-none w-full">
+        <div class="w-full max-w-5xl overflow-x-auto pagination-scroll px-1">
+            <nav role="navigation" aria-label="Pagination" class="flex items-center gap-1.5 bg-[#0f1115] border border-white/5 rounded-2xl px-2 py-2 shadow-lg shadow-black/40 min-w-max mx-auto">
             {{-- Previous Page Link --}}
             @if ($paginator->onFirstPage())
                 <span class="flex items-center justify-center h-10 w-10 rounded-xl bg-white/5 text-gray-500 border border-white/5 cursor-not-allowed">
@@ -61,6 +56,7 @@
                     </svg>
                 </span>
             @endif
-        </nav>
+            </nav>
+        </div>
     </div>
 @endif

@@ -116,6 +116,25 @@
     }
 }
 
+/* Pagination scroll helper */
+.pagination-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.pagination-scroll::-webkit-scrollbar {
+    height: 6px;
+}
+
+.pagination-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+.pagination-scroll nav {
+    min-width: max-content;
+}
+
 /* Smooth animations that respect user preferences */
 @media (prefers-reduced-motion: reduce) {
     * {

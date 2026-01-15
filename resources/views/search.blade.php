@@ -165,7 +165,7 @@
                 @endif
                 
                 @if($animes->count() > 0)
-                    <div class="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2 xs:gap-3 sm:gap-4 lg:gap-5 xl:gap-6 mb-8 sm:mb-12">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-5 xl:gap-6 mb-8 sm:mb-12">
                         @foreach($animes as $anime)
                             @php $shouldBlurSearch = $anime->shouldBlurPoster(); @endphp
                             <a href="{{ $shouldBlurSearch ? '#' : route('detail', $anime) }}" class="group" @if($shouldBlurSearch) onclick="event.preventDefault(); alert('Konten 18+ - Anda harus login dan berusia minimal 18 tahun untuk mengakses.')" @endif>
@@ -220,7 +220,11 @@
 
                     <!-- Pagination -->
                     <div class="flex justify-center py-6 sm:py-8 lg:py-12">
-                        {{ $animes->links() }}
+                        <div class="w-full max-w-5xl overflow-x-auto pagination-scroll px-1">
+                            <div class="min-w-max mx-auto">
+                                {{ $animes->links() }}
+                            </div>
+                        </div>
                     </div>
                 @else
                     <!-- Empty State with suggestions -->
@@ -313,6 +317,24 @@
     #searchSuggestions::-webkit-scrollbar-thumb {
         background: rgba(255, 255, 255, 0.2);
         border-radius: 3px;
+    }
+
+    .pagination-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    }
+
+    .pagination-scroll::-webkit-scrollbar {
+        height: 6px;
+    }
+
+    .pagination-scroll::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+    }
+
+    .pagination-scroll nav {
+        min-width: max-content;
     }
 
     .suggestion-item {
