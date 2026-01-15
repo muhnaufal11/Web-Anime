@@ -55,12 +55,12 @@
     <script defer src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3820756796736021"
          crossorigin="anonymous"></script>
 
-    <script>
-        (() => {
-            const stored = localStorage.getItem('nipnime_theme');
-            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const theme = stored || (prefersDark ? 'dark' : 'light');
-            const root = document.documentElement;
+    <script data-cfasync="false">
+        (function() {
+            var stored = localStorage.getItem('nipnime_theme');
+            var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            var theme = stored || (prefersDark ? 'dark' : 'light');
+            var root = document.documentElement;
             root.dataset.theme = theme;
             root.classList.toggle('theme-dark', theme === 'dark');
             root.classList.toggle('theme-light', theme === 'light');
@@ -71,6 +71,13 @@
     <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"></noscript>
     
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    
+    <!-- Subtitle Styling -->
+    <link rel="stylesheet" href="/css/subtitle.css">
+    
+    <!-- Responsive Fixes -->
+    <link rel="stylesheet" href="/css/responsive-fix.css">
+    
     @livewireStyles
     @stack('head')
     @stack('structured-data')

@@ -1,0 +1,193 @@
+/* ============================================
+   VIDEO SUBTITLE STYLING - Premium Look
+   ============================================ */
+
+/* WebVTT Native Subtitle Styling */
+video::cue {
+    /* Beautiful font styling */
+    font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 1.3em;
+    font-weight: 600;
+    line-height: 1.4;
+    
+    /* Text appearance - NO background, clean text with outline */
+    color: #ffffff;
+    text-shadow: 
+        /* Multi-layer outline for perfect readability */
+        -1px -1px 0 #000,
+        1px -1px 0 #000,
+        -1px 1px 0 #000,
+        1px 1px 0 #000,
+        -2px 0 0 #000,
+        2px 0 0 #000,
+        0 -2px 0 #000,
+        0 2px 0 #000,
+        /* Soft glow */
+        0 0 8px rgba(0, 0, 0, 0.5);
+    
+    /* NO background - transparent */
+    background-color: transparent !important;
+    background: transparent !important;
+    
+    /* Smooth appearance */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtitle region positioning */
+video::cue-region {
+    font-size: 1.3em;
+}
+
+/* Bold text in subtitles */
+video::cue(b) {
+    font-weight: 700;
+    color: #ffeb3b;
+}
+
+/* Italic text in subtitles */
+video::cue(i) {
+    font-style: italic;
+    color: #b3e5fc;
+}
+
+/* Custom Subtitle Container (for JS-rendered subtitles) */
+.subtitle-container {
+    position: absolute;
+    bottom: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    text-align: center;
+    width: 90%;
+    max-width: 900px;
+    pointer-events: none;
+}
+
+.subtitle-text {
+    /* Beautiful font */
+    font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    font-size: clamp(1rem, 2.5vw, 1.4rem);
+    font-weight: 600;
+    line-height: 1.5;
+    color: #ffffff;
+    
+    /* Clean outline shadow - NO background */
+    text-shadow: 
+        -1px -1px 0 #000,
+        1px -1px 0 #000,
+        -1px 1px 0 #000,
+        1px 1px 0 #000,
+        -2px 0 0 #000,
+        2px 0 0 #000,
+        0 -2px 0 #000,
+        0 2px 0 #000,
+        0 0 10px rgba(0, 0, 0, 0.4);
+    
+    /* NO background - transparent */
+    background: transparent !important;
+    padding: 0.4em 1em;
+    display: inline-block;
+    
+    /* SMOOTH animations - cubic-bezier for butter smooth */
+    animation: subtitleFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Fade in animation for subtitles - SUPER SMOOTH */
+@keyframes subtitleFadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+        filter: blur(2px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+    }
+}
+
+/* Fade out class - SMOOTH */
+.subtitle-text.fade-out {
+    animation: subtitleFadeOut 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes subtitleFadeOut {
+    0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-5px) scale(0.98);
+        filter: blur(2px);
+    }
+}
+
+/* Subtitle with border/outline style (alternative) */
+.subtitle-text.outline-style {
+    background: transparent;
+    -webkit-text-stroke: 1.5px #000;
+    paint-order: stroke fill;
+}
+
+/* Subtitle emphasis (for important dialogue) */
+.subtitle-text em,
+.subtitle-text .emphasis {
+    color: #ffd54f;
+    font-style: normal;
+    font-weight: 700;
+}
+
+/* Subtitle for different speakers (color coding) */
+.subtitle-text.speaker-1 { color: #ffffff; }
+.subtitle-text.speaker-2 { color: #90caf9; }
+.subtitle-text.speaker-3 { color: #f48fb1; }
+.subtitle-text.speaker-4 { color: #a5d6a7; }
+
+/* Responsive subtitle sizing */
+@media (max-width: 640px) {
+    video::cue {
+        font-size: 1em;
+        padding: 0.15em 0.4em;
+    }
+    
+    .subtitle-text {
+        font-size: clamp(0.85rem, 3.5vw, 1.1rem);
+        padding: 0.3em 0.7em;
+    }
+    
+    .subtitle-container {
+        bottom: 8%;
+        width: 95%;
+    }
+}
+
+@media (min-width: 1280px) {
+    video::cue {
+        font-size: 1.5em;
+    }
+    
+    .subtitle-text {
+        font-size: 1.5rem;
+    }
+}
+
+/* Fullscreen subtitle adjustments */
+video:fullscreen::cue,
+video:-webkit-full-screen::cue {
+    font-size: 2em;
+    padding: 0.3em 0.7em;
+}
+
+/* Hide native captions when custom is used */
+video.custom-subtitles::-webkit-media-text-track-display {
+    display: none !important;
+}
+
+/* Smooth subtitle track transitions */
+video::cue {
+    transition: all 0.15s ease-out;
+}

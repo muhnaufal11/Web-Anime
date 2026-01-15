@@ -6,24 +6,24 @@
 @section('content')
 <div class="min-h-screen bg-gradient-to-b from-[#0f1115] via-[#0f1115] to-[#1a1d24]">
     <!-- Header Section -->
-    <div class="max-w-7xl mx-auto px-4 py-8">
-        <div class="mb-10">
-            <h1 class="text-4xl md:text-5xl font-black text-white mb-2 uppercase tracking-tighter">
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+        <div class="mb-6 sm:mb-10">
+            <h1 class="text-2xl sm:text-4xl md:text-5xl font-black text-white mb-1 sm:mb-2 uppercase tracking-tighter">
                 {{ __('app.search.title') }}
             </h1>
-            <p class="text-gray-400 text-lg">{{ __('app.search.subtitle') }}</p>
+            <p class="text-gray-400 text-sm sm:text-lg">{{ __('app.search.subtitle') }}</p>
         </div>
     </div>
 
-    <div class="max-w-7xl mx-auto px-4 pb-20">
-        <div class="flex flex-col lg:flex-row gap-8">
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 pb-12 sm:pb-20">
+        <div class="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8">
             <!-- Filter Sidebar -->
             <aside class="w-full lg:w-80 flex-shrink-0">
-                <div class="bg-gradient-to-br from-[#1a1d24] to-[#0f1115] rounded-3xl p-8 border border-white/10 sticky top-28 backdrop-blur-xl shadow-2xl shadow-black/50">
-                    <div class="flex items-center justify-between mb-8">
-                        <div class="flex items-center gap-3">
-                            <div class="w-1 h-8 bg-gradient-to-b from-red-600 to-red-700 rounded-full"></div>
-                            <h3 class="text-2xl font-black text-white uppercase tracking-tight">{{ __('app.search.filter') }}</h3>
+                <div class="bg-gradient-to-br from-[#1a1d24] to-[#0f1115] rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 border border-white/10 lg:sticky lg:top-28 backdrop-blur-xl shadow-2xl shadow-black/50">
+                    <div class="flex items-center justify-between mb-4 sm:mb-6 lg:mb-8">
+                        <div class="flex items-center gap-2 sm:gap-3">
+                            <div class="w-1 h-6 sm:h-8 bg-gradient-to-b from-red-600 to-red-700 rounded-full"></div>
+                            <h3 class="text-lg sm:text-xl lg:text-2xl font-black text-white uppercase tracking-tight">{{ __('app.search.filter') }}</h3>
                         </div>
                         @php
                             $activeFilters = collect(['search', 'genre', 'status', 'type', 'year'])->filter(fn($f) => request()->filled($f))->count();
@@ -165,11 +165,11 @@
                 @endif
                 
                 @if($animes->count() > 0)
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 mb-12">
+                    <div class="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2 xs:gap-3 sm:gap-4 lg:gap-5 xl:gap-6 mb-8 sm:mb-12">
                         @foreach($animes as $anime)
                             @php $shouldBlurSearch = $anime->shouldBlurPoster(); @endphp
                             <a href="{{ $shouldBlurSearch ? '#' : route('detail', $anime) }}" class="group" @if($shouldBlurSearch) onclick="event.preventDefault(); alert('Konten 18+ - Anda harus login dan berusia minimal 18 tahun untuk mengakses.')" @endif>
-                                <div class="relative overflow-hidden rounded-2xl bg-[#1a1d24] border border-white/10 group-hover:border-red-600/50 transition-all duration-300">
+                                <div class="relative overflow-hidden rounded-xl sm:rounded-2xl bg-[#1a1d24] border border-white/10 group-hover:border-red-600/50 group-active:border-red-600/50 transition-all duration-300">
                                     <!-- Image Container -->
                                     <div class="aspect-[3/4] overflow-hidden relative">
                                         <img src="{{ $anime->poster_image ? asset('storage/' . $anime->poster_image) : asset('images/placeholder.png') }}" 
@@ -189,14 +189,14 @@
                                         <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                                         
                                         <!-- Type Badge -->
-                                        <div class="absolute top-3 left-3 bg-gradient-to-r from-red-600 to-red-700 text-[10px] font-black px-3 py-1.5 rounded-lg shadow-lg text-white uppercase tracking-wider">
+                                        <div class="absolute top-2 sm:top-3 left-2 sm:left-3 bg-gradient-to-r from-red-600 to-red-700 text-[8px] sm:text-[10px] font-black px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg shadow-lg text-white uppercase tracking-wider">
                                             {{ $anime->type }}
                                         </div>
 
                                         <!-- Play Icon -->
-                                        <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-75 group-hover:scale-100">
-                                            <div class="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-xl shadow-red-600/50">
-                                                <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-all duration-300 transform scale-75 group-hover:scale-100">
+                                            <div class="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 bg-red-600 rounded-full flex items-center justify-center shadow-xl shadow-red-600/50">
+                                                <svg class="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 lg:w-8 lg:h-8 text-white ml-0.5" fill="currentColor" viewBox="0 0 20 20">
                                                     <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/>
                                                 </svg>
                                             </div>
@@ -204,13 +204,13 @@
                                     </div>
 
                                     <!-- Info Section -->
-                                    <div class="p-4 bg-gradient-to-b from-[#1a1d24] to-[#0f1115]">
-                                        <h3 class="text-sm font-bold text-white group-hover:text-red-500 transition-colors duration-300 line-clamp-2 min-h-[2.5rem]">
+                                    <div class="p-2 xs:p-2.5 sm:p-3 lg:p-4 bg-gradient-to-b from-[#1a1d24] to-[#0f1115]">
+                                        <h3 class="text-[11px] xs:text-xs sm:text-sm font-bold text-white group-hover:text-red-500 transition-colors duration-300 line-clamp-2 min-h-[2rem] sm:min-h-[2.5rem]">
                                             {{ $anime->title }}
                                         </h3>
-                                        <div class="flex items-center justify-between mt-3 pt-3 border-t border-white/10">
-                                            <span class="text-[10px] text-gray-500 font-semibold">{{ $anime->release_year }}</span>
-                                            <span class="text-[10px] text-yellow-500 font-black">★ {{ number_format($anime->rating, 1) }}</span>
+                                        <div class="flex items-center justify-between mt-1.5 sm:mt-2 lg:mt-3 pt-1.5 sm:pt-2 lg:pt-3 border-t border-white/10">
+                                            <span class="text-[8px] xs:text-[9px] sm:text-[10px] text-gray-500 font-semibold">{{ $anime->release_year }}</span>
+                                            <span class="text-[8px] xs:text-[9px] sm:text-[10px] text-yellow-500 font-black">★ {{ number_format($anime->rating, 1) }}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -219,7 +219,7 @@
                     </div>
 
                     <!-- Pagination -->
-                    <div class="flex justify-center py-12">
+                    <div class="flex justify-center py-6 sm:py-8 lg:py-12">
                         {{ $animes->links() }}
                     </div>
                 @else
