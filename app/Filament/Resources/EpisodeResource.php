@@ -454,6 +454,189 @@ class EpisodeResource extends Resource
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
                 
+                // BULK ADD MANUAL SERVER - Tambah server manual (pilih file dari FileBrowser) ke semua episode sekaligus
+                Tables\Actions\BulkAction::make('bulk_add_manual_server')
+                    ->label('Bulk Tambah Server Manual')
+                    ->icon('heroicon-o-plus-circle')
+                    ->color('danger')
+                    ->visible(fn () => auth()->user()?->canUploadVideo())
+                    ->form([
+                        Forms\Components\TextInput::make('server_name')
+                            ->label('Nama Server')
+                            ->placeholder('contoh: kraken 480p')
+                            ->default('Server Admin')
+                            ->required()
+                            ->helperText('Nama server yang akan ditampilkan ke user'),
+                        Forms\Components\TextInput::make('search_filter')
+                            ->label('Filter Nama File')
+                            ->placeholder('Ketik nama anime untuk filter (contoh: Fullmetal, Brotherhood)')
+                            ->reactive()
+                            ->helperText('Ketik minimal 3 karakter untuk menampilkan file'),
+                        Forms\Components\CheckboxList::make('video_files')
+                            ->label('Pilih File Video')
+                            ->options(function (callable $get) {
+                                $search = $get('search_filter') ?? '';
+                                
+                                // Minimal 3 karakter untuk menampilkan file
+                                if (strlen($search) < 3) {
+                                    return [];
+                                }
+                                
+                                $files = [];
+                                $path = storage_path('app/public/videos/episodes');
+                                
+                                if (is_dir($path)) {
+                                    $allFiles = scandir($path);
+                                    $extensions = ['mp4', 'mkv', 'webm'];
+                                    $count = 0;
+                                    
+                                    foreach ($allFiles as $file) {
+                                        if ($file === '.' || $file === '..') continue;
+                                        
+                                        // Filter berdasarkan search
+                                        if (!empty($search) && stripos($file, $search) === false) {
+                                            continue;
+                                        }
+                                        
+                                        $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+                                        if (in_array($ext, $extensions)) {
+                                            $fullPath = $path . '/' . $file;
+                                            $size = round(filesize($fullPath) / 1024 / 1024, 1);
+                                            $files[$file] = "{$file} ({$size} MB)";
+                                            $count++;
+                                            
+                                            // Maksimal 100 file untuk performa
+                                            if ($count >= 100) break;
+                                        }
+                                    }
+                                    ksort($files);
+                                }
+                                
+                                return $files;
+                            })
+                            ->bulkToggleable()
+                            ->columns(1)
+                            ->required()
+                            ->helperText('Centang file video. Nama file HARUS mengandung nomor episode (contoh: Ep01.mp4, episode-02.mp4)'),
+                        Forms\Components\View::make('filament.components.filebrowser-link')
+                            ->viewData(['url' => 'http://192.168.100.13:8081']),
+                        Forms\Components\Toggle::make('is_active')
+                            ->label('Aktif')
+                            ->default(true),
+                        Forms\Components\Toggle::make('is_default')
+                            ->label('Set sebagai Default Server')
+                            ->default(false),
+                    ])
+                    ->action(function (\Illuminate\Database\Eloquent\Collection $records, array $data) {
+                        $videoFiles = $data['video_files'] ?? [];
+                        $serverName = $data['server_name'] ?? 'Server Admin';
+                        $isActive = $data['is_active'] ?? true;
+                        $isDefault = $data['is_default'] ?? false;
+                        
+                        if (empty($videoFiles)) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Gagal')
+                                ->danger()
+                                ->body('Minimal 1 file video harus dipilih.')
+                                ->send();
+                            return;
+                        }
+
+                        // Mapping file video ke nomor episode
+                        $fileMap = [];
+                        $unmapped = [];
+                        foreach ($videoFiles as $filename) {
+                            $epNum = null;
+                            // Cari nomor episode dari nama file
+                            if (preg_match('/(?:Episode|Ep)[^0-9]*(\d+)/i', $filename, $m)) {
+                                $epNum = (int) $m[1];
+                            } elseif (preg_match('/[\-_\s](\d+)\.(?:mp4|mkv|webm)$/i', $filename, $m)) {
+                                $epNum = (int) $m[1];
+                            } elseif (preg_match('/(\d+)\.(?:mp4|mkv|webm)$/i', $filename, $m)) {
+                                $epNum = (int) $m[1];
+                            }
+                            
+                            if ($epNum !== null) {
+                                $fileMap[$epNum] = $filename;
+                            } else {
+                                $unmapped[] = $filename;
+                            }
+                        }
+
+                        $created = 0;
+                        $updated = 0;
+                        $skipped = 0;
+                        $recordsList = $records->sortBy('episode_number')->values();
+
+                        foreach ($recordsList as $episode) {
+                            $epNum = $episode->episode_number;
+                            
+                            if (!isset($fileMap[$epNum])) {
+                                $skipped++;
+                                continue;
+                            }
+                            
+                            $filename = $fileMap[$epNum];
+                            $embedUrl = Storage::disk('public')->url('videos/episodes/' . $filename);
+
+                            // Simpan ke database
+                            $vs = \App\Models\VideoServer::updateOrCreate(
+                                [
+                                    'episode_id' => $episode->id,
+                                    'server_name' => $serverName,
+                                ],
+                                [
+                                    'embed_url' => $embedUrl,
+                                    'is_active' => $isActive,
+                                    'is_default' => $isDefault,
+                                    'source' => 'manual',
+                                ]
+                            );
+
+                            if ($vs->wasRecentlyCreated) {
+                                $created++;
+                            } else {
+                                $updated++;
+                            }
+
+                            // Admin log per episode
+                            $user = auth()->user()?->refresh();
+                            if ($user && $user->isAdmin()) {
+                                $rate = $user->payment_rate ?? 500;
+                                \App\Models\AdminEpisodeLog::updateOrCreate(
+                                    [
+                                        'user_id' => $user->id,
+                                        'episode_id' => $episode->id,
+                                    ],
+                                    [
+                                        'amount' => $rate,
+                                        'status' => \App\Models\AdminEpisodeLog::STATUS_PENDING,
+                                        'note' => "Bulk add manual server ({$serverName}) - Rp " . number_format($rate, 0, ',', '.'),
+                                    ]
+                                );
+                            }
+                        }
+
+                        $body = "Created: {$created} | Updated: {$updated}";
+                        if ($skipped > 0) {
+                            $body .= " | Skipped (no match): {$skipped}";
+                        }
+                        if (!empty($unmapped)) {
+                            $body .= "\n⚠️ File tidak ter-mapping: " . implode(', ', $unmapped);
+                        }
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('Bulk Tambah Server Berhasil!')
+                            ->success()
+                            ->body($body)
+                            ->send();
+                    })
+                    ->deselectRecordsAfterCompletion()
+                    ->requiresConfirmation()
+                    ->modalWidth('5xl')
+                    ->modalHeading('Bulk Tambah Server Manual')
+                    ->modalSubheading('Pilih banyak file video sekaligus. Sistem akan auto-mapping ke episode berdasarkan nomor di nama file.'),
+                
                 // BULK SET DEFAULT SERVER
                 Tables\Actions\BulkAction::make('bulk_set_default')
                     ->label('Bulk Set Default')
